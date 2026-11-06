@@ -8,7 +8,8 @@ library by describing what you remember ("the video about sourdough starters fro
 - `web/supabase/`: Supabase config for local development
 - `extension/`: Chrome/Edge/Brave/Arc extension (Manifest V3, no build step)
 
-Supabase provides Google sign-in (Supabase Auth) and the database (Postgres with pgvector).
+[Clerk](https://clerk.com) handles sign-in (Google, email). Supabase provides the database (Postgres
+with pgvector).
 The Next.js server handles saving, AI processing and search, so there is no other backend.
 
 ## Local development
@@ -24,33 +25,28 @@ pnpm db:migrate
 pnpm dev                             # http://localhost:3000
 ```
 
-To use Google sign-in locally, create a Google OAuth client (below) with the redirect URI
-`http://127.0.0.1:54321/auth/v1/callback`, put `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` and
-`SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET` in `web/supabase/.env`, then run
-`pnpm supabase stop && pnpm supabase start`.
+Sign-in uses the Clerk development instance. Its keys live in `web/.env.local`; to restore them, run
+`pnpm dlx clerk@latest env pull` from `web/`. Google sign-in works in development without extra setup.
 
-## Deploying (Supabase + Vercel)
+## Deploying (Clerk + Supabase + Vercel)
 
 1. **Supabase**: create a project at [supabase.com](https://supabase.com).
-2. **Google OAuth**: in Google Cloud Console, go to APIs & Services, Credentials, *Create OAuth
-   client ID* (Web application). Add the redirect URI
-   `https://<project-ref>.supabase.co/auth/v1/callback`. Then in Supabase, go to
-   Authentication, Sign In / Providers, Google; enable it and paste the client ID and secret.
+2. **Clerk**: in the [Clerk dashboard](https://dashboard.clerk.com), create a production instance
+   for your domain (or run `pnpm dlx clerk@latest deploy`). Production Google sign-in needs your own
+   Google OAuth client; Clerk's dashboard walks through it.
 3. **Tables**: from `web/`, run `DIRECT_URL="<session pooler string>" pnpm db:migrate`
    (Supabase dashboard, Connect, *Session pooler*, port 5432).
 4. **Vercel**: import the repo and set **Root Directory** to `web`. Add these environment variables:
 
    | Variable | Value |
    | --- | --- |
-   | `NEXT_PUBLIC_SUPABASE_URL` | Supabase, Connect, Project URL |
-   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Project Settings, API Keys, publishable key (the legacy `anon` key also works, as `NEXT_PUBLIC_SUPABASE_ANON_KEY`) |
+   | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | Clerk dashboard, API keys (production instance) |
+   | `NEXT_PUBLIC_CLERK_SIGN_IN_URL`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-in`, `/sign-up` |
    | `DATABASE_URL` | Supabase, Connect, *Transaction pooler* string (port 6543) |
    | `OPENROUTER_API_KEY` | [openrouter.ai/keys](https://openrouter.ai/keys) |
 
-   The Vercel Supabase integration fills in the Supabase variables automatically
-   (`POSTGRES_URL` is used when `DATABASE_URL` is absent).
-5. **Redirect URLs**: in Supabase, go to Authentication, URL Configuration. Set Site URL to
-   `https://<your-app>.vercel.app` and add `https://<your-app>.vercel.app/**` to the redirect URLs.
+   The Vercel Supabase integration's `POSTGRES_URL` is used when `DATABASE_URL` is absent.
+5. In Clerk, add your Vercel domain to the production instance's allowed origins if Clerk asks.
 6. In the extension's options, set the app address to your Vercel URL and connect again.
 
 ### AI settings
@@ -68,9 +64,9 @@ bookmarks, use **Reprocess** on items (or re-save them) so search vectors stay c
 
 ### Security
 
-The server connects to Postgres directly. Row-level security is enabled on every table, so the
-public Supabase Data API only exposes a signed-in user's own bookmarks and categories, and never
-extension access keys.
+The server connects to Postgres directly and scopes every query to the signed-in Clerk user. Row-level
+security is enabled on every table with no policies, so the public Supabase Data API can't read or
+write any of them.
 
 ## Browser extension
 
@@ -105,8 +101,8 @@ options (right-click the toolbar button, then **Options**), then connect again.
 
 | Path | Purpose |
 | --- | --- |
-| `web/src/db/schema.ts` | Tables and RLS policies: `category`, `bookmark` (vector + tsvector), `api_token` (users live in Supabase `auth.users`) |
-| `web/src/lib/supabase/*`, `web/src/proxy.ts` | Supabase Auth clients and session refresh |
+| `web/src/db/schema.ts` | Tables: `category`, `bookmark` (vector + tsvector), `api_token`; `user_id` is the Clerk user id |
+| `web/src/proxy.ts`, `web/src/lib/session.ts` | Clerk middleware; session and extension-token checks |
 | `web/src/lib/extract.ts` | URL normalization, safe fetching, page/X/YouTube extraction |
 | `web/src/lib/ai.ts` | Prompts and models: analyze, classify, plan search, embed |
 | `web/src/lib/pipeline.ts` | Background processing and re-categorization |

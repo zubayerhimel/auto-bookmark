@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { Puzzle, Tags } from "lucide-react";
 import { SidebarNav } from "@/components/sidebar-nav";
-import { SignOutButton } from "@/components/sign-out-button";
+import { UserButton } from "@clerk/nextjs";
 import { libraryStats, listCategoriesWithCounts } from "@/lib/bookmarks";
 import { requireUser } from "@/lib/session";
 
@@ -31,15 +31,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <Link href="/extension" className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-ink-soft hover:bg-white/60 hover:text-ink">
             <Puzzle className="size-4" aria-hidden /> Browser extension
           </Link>
-          <div className="mt-3 flex items-center gap-2.5 px-2.5">
-            {user.image ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.image} alt="" referrerPolicy="no-referrer" className="size-7 rounded-full" />
-            ) : null}
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{user.name}</p>
-              <SignOutButton />
-            </div>
+          <div className="mt-3 px-2.5">
+            <UserButton showName />
           </div>
         </div>
       </aside>
@@ -48,7 +41,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <nav className="mt-12 flex gap-5 border-t border-rule pt-4 text-sm text-ink-soft lg:hidden">
           <Link href="/categories">Manage categories</Link>
           <Link href="/extension">Browser extension</Link>
-          <SignOutButton />
+          <span className="ml-auto">
+            <UserButton />
+          </span>
         </nav>
       </main>
     </div>

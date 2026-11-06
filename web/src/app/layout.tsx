@@ -1,3 +1,4 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import { Literata, Schibsted_Grotesk } from "next/font/google";
 import "./globals.css";
@@ -21,7 +22,25 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className={`${grotesk.variable} ${literata.variable} antialiased`}>
-      <body className="min-h-dvh">{children}</body>
+      <body className="min-h-dvh">
+        <ClerkProvider
+          signInFallbackRedirectUrl="/library"
+          signUpFallbackRedirectUrl="/library"
+          appearance={{
+            variables: {
+              colorPrimary: "#2446c7",
+              colorForeground: "#1b2430",
+              colorMutedForeground: "#4a5565",
+              colorDanger: "#b42318",
+              colorBackground: "#f9fafb",
+              fontFamily: "var(--font-grotesk), system-ui, sans-serif",
+              borderRadius: "0.75rem",
+            },
+          }}
+        >
+          {children}
+        </ClerkProvider>
+      </body>
     </html>
   );
 }

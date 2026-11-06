@@ -1,34 +1,19 @@
 import "server-only";
-import { cache } from "react";
-import { redirect } from "next/navigation";
+import { auth } from "@clerk/nextjs/server";
 import { createHash, randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { createClient } from "./supabase/server";
 
-export type SessionUser = {
-  id: string;
-  name: string;
-  email: string;
-  image: string | null;
-};
+/** The signed-in Clerk user id, or null. */
+export async function getUserId(): Promise<string | null> {
+  const { userId } = await auth();
+  return userId;
+}
 
-export const getUser = cache(async (): Promise<SessionUser | null> => {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getClaims();
-  const claims = data?.claims;
-  if (!claims?.sub) return null;
-  const meta = (claims.user_metadata ?? {}) as Record<string, unknown>;
-  const email = typeof claims.email === "string" ? claims.email : "";
-  const name = [meta.full_name, meta.name].find((v): v is string => typeof v === "string" && !!v);
-  const image = [meta.avatar_url, meta.picture].find((v): v is string => typeof v === "string" && !!v);
-  return { id: claims.sub, email, name: name ?? email.split("@")[0], image: image ?? null };
-});
-
-export async function requireUser(): Promise<SessionUser> {
-  const user = await getUser();
-  if (!user) redirect("/");
-  return user;
+/** For pages and server actions: sends signed-out visitors to sign in (pages) or rejects (actions). */
+export async function requireUser(): Promise<{ id: string }> {
+  const { userId } = await auth.protect();
+  return { id: userId };
 }
 
 export function hashToken(token: string) {
@@ -40,12 +25,12 @@ export function generateToken() {
 }
 
 /**
- * Resolves the caller of an API route: either a browser session cookie
+ * Resolves the caller of an API route: either a browser session
  * or an extension token sent as `Authorization: Bearer abk_…`.
  */
 export async function getRequestUserId(req: Request): Promise<string | null> {
   const header = req.headers.get("authorization");
-  if (header?.startsWith("Bearer ")) {
+  if (header?.startsWith("Bearer abk_")) {
     const token = header.slice(7).trim();
     const [row] = await db
       .select({ id: schema.apiToken.id, userId: schema.apiToken.userId })
@@ -59,5 +44,5 @@ export async function getRequestUserId(req: Request): Promise<string | null> {
       .where(eq(schema.apiToken.id, row.id));
     return row.userId;
   }
-  return (await getUser())?.id ?? null;
+  return getUserId();
 }

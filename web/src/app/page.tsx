@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { FileText, MessageSquareText, MonitorPlay, Search } from "lucide-react";
 import { Highlight } from "@/components/highlight";
-import { SignInButton } from "@/components/sign-in-button";
-import { getUser } from "@/lib/session";
+import { SignInButton, SignUpButton } from "@clerk/nextjs";
+import { getUserId } from "@/lib/session";
 
 const demoResults = [
   {
@@ -52,7 +52,7 @@ export default async function Home({
 }) {
   const params = await searchParams;
   const next = safeNext(params.next);
-  if (await getUser()) redirect(next);
+  if (await getUserId()) redirect(next);
 
   return (
     <main className="mx-auto flex min-h-dvh max-w-6xl flex-col px-5 py-8 sm:px-8">
@@ -70,12 +70,24 @@ export default async function Home({
             looking at. AI reads it, writes a short summary, and files it under a category that
             fits, adding new categories as your interests change.
           </p>
-          <SignInButton className="mt-9" callbackURL={next} />
-          {params.error === "signin" ? (
-            <p role="alert" className="mt-4 text-sm text-danger">
-              Google sign-in didn&apos;t finish. Please try again.
-            </p>
-          ) : null}
+          <div className="mt-9 flex flex-wrap items-center gap-3">
+            <SignUpButton mode="redirect" forceRedirectUrl={next} signInForceRedirectUrl={next}>
+              <button
+                type="button"
+                className="rounded-full bg-ink px-6 py-3 text-base font-semibold text-white transition-colors hover:bg-action"
+              >
+                Create your library
+              </button>
+            </SignUpButton>
+            <SignInButton mode="redirect" forceRedirectUrl={next} signUpForceRedirectUrl={next}>
+              <button
+                type="button"
+                className="rounded-full px-5 py-3 text-base font-semibold text-ink hover:bg-white/60"
+              >
+                Sign in
+              </button>
+            </SignInButton>
+          </div>
         </div>
 
         <figure aria-label="Example search" className="rounded-2xl bg-sheet p-5 shadow-[0_1px_0_var(--rule),0_24px_48px_-28px_rgba(27,36,48,0.35)] sm:p-7">

@@ -1,8 +1,14 @@
 "use client";
 
-import { LoaderCircle, Search, X } from "lucide-react";
+import { CircleAlertIcon, SearchIcon, SearchXIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { BookmarkListItem } from "@/lib/bookmarks";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Kbd } from "@/components/ui/kbd";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { BookmarkRow } from "./bookmark-row";
 
 type Result = {
@@ -83,72 +89,82 @@ export function SearchPanel({ initialQuery, children }: { initialQuery: string; 
 
   return (
     <div>
-      <div role="search" className="flex items-center gap-3 border-b-2 border-ink pb-3 focus-within:border-action">
-        {loading ? (
-          <LoaderCircle className="size-6 shrink-0 animate-spin text-action motion-reduce:animate-none" aria-hidden />
-        ) : (
-          <Search className="size-6 shrink-0 text-ink-faint" aria-hidden />
-        )}
+      <div role="search">
         <label htmlFor="library-search" className="sr-only">
           Search your bookmarks
         </label>
-        <input
-          ref={inputRef}
-          id="library-search"
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onKeyDown={(e) => e.key === "Escape" && setQuery("")}
-          placeholder="Describe what you're looking for"
-          autoComplete="off"
-          className="min-w-0 flex-1 bg-transparent text-xl font-medium tracking-tight placeholder:text-ink-faint focus:outline-none sm:text-[1.75rem] [&::-webkit-search-cancel-button]:hidden"
-        />
-        {query ? (
-          <button
-            type="button"
-            onClick={() => {
-              setQuery("");
-              inputRef.current?.focus();
-            }}
-            className="rounded-full p-1 text-ink-faint hover:bg-paper hover:text-ink"
-            aria-label="Clear search"
-          >
-            <X className="size-5" />
-          </button>
-        ) : (
-          <kbd className="hidden rounded border border-rule px-1.5 text-xs text-ink-faint sm:block">/</kbd>
-        )}
+        <InputGroup className="h-12 rounded-xl bg-card shadow-xs sm:h-14">
+          <InputGroupAddon className="pl-3.5">
+            {loading ? <Spinner className="text-ring" /> : <SearchIcon />}
+          </InputGroupAddon>
+          <InputGroupInput
+            ref={inputRef}
+            id="library-search"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => e.key === "Escape" && setQuery("")}
+            placeholder="Describe what you're looking for"
+            autoComplete="off"
+            enterKeyHint="search"
+            className="text-base font-medium sm:text-lg [&::-webkit-search-cancel-button]:hidden"
+          />
+          <InputGroupAddon align="inline-end" className="pr-2.5">
+            {query ? (
+              <InputGroupButton
+                size="icon-sm"
+                aria-label="Clear search"
+                onClick={() => {
+                  setQuery("");
+                  inputRef.current?.focus();
+                }}
+              >
+                <XIcon />
+              </InputGroupButton>
+            ) : (
+              <Kbd className="hidden sm:inline-flex">/</Kbd>
+            )}
+          </InputGroupAddon>
+        </InputGroup>
       </div>
 
       {!searching ? (
         <>
-          <p className="mt-2 text-sm text-ink-faint">
+          <p className="mt-2 px-1 text-sm text-muted-foreground">
             Try “the video about sourdough starters” or “posts about TypeScript from last month”.
           </p>
           {children}
         </>
       ) : (
-        <section aria-live="polite" aria-busy={loading} className="mt-3">
+        <section aria-live="polite" aria-busy={loading} className="mt-4">
           {error ? (
-            <p className="py-6 text-danger">{error}</p>
+            <Alert variant="destructive">
+              <CircleAlertIcon />
+              <AlertTitle>Search didn&apos;t work</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           ) : data ? (
             <>
-              <p className="text-sm text-ink-faint">
+              <p className="px-1 text-sm text-muted-foreground">
                 {data.understood ? `${describe(data.understood)}. ` : ""}
                 {data.results.length === 0
                   ? ""
                   : `${data.results.length} ${data.results.length === 1 ? "match" : "matches"}, closest first.`}
               </p>
               {data.results.length === 0 ? (
-                <div className="py-14">
-                  <p className="text-lg font-semibold">Nothing matches that yet.</p>
-                  <p className="mt-1 max-w-[52ch] text-ink-soft">
-                    Describe it differently: who made it, what it helped you do, or a phrase you remember
-                    from it.
-                  </p>
-                </div>
+                <Empty className="mt-6 border">
+                  <EmptyHeader>
+                    <EmptyMedia variant="icon">
+                      <SearchXIcon />
+                    </EmptyMedia>
+                    <EmptyTitle>Nothing matches that yet</EmptyTitle>
+                    <EmptyDescription>
+                      Describe it differently: who made it, what it helped you do, or a phrase you remember from it.
+                    </EmptyDescription>
+                  </EmptyHeader>
+                </Empty>
               ) : (
-                <ol className="mt-2 divide-y divide-rule">
+                <ol className="mt-2 divide-y divide-border">
                   {data.results.map((item) => (
                     <BookmarkRow key={item.id} item={item} terms={data.terms} />
                   ))}
@@ -156,7 +172,18 @@ export function SearchPanel({ initialQuery, children }: { initialQuery: string; 
               )}
             </>
           ) : (
-            <p className="py-6 text-sm text-ink-faint">Searching…</p>
+            <div className="flex flex-col gap-6 py-4" aria-label="Searching">
+              {[0, 1, 2].map((i) => (
+                <div key={i} className="grid grid-cols-[4px_1fr] gap-4">
+                  <Skeleton className="h-full rounded-full" />
+                  <div className="flex flex-col gap-2">
+                    <Skeleton className="h-3 w-24" />
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-4 w-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </section>
       )}

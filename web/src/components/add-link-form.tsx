@@ -1,7 +1,10 @@
 "use client";
 
-import { Plus } from "lucide-react";
+import { LinkIcon, PlusIcon } from "lucide-react";
 import { useActionState, useEffect, useRef } from "react";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Spinner } from "@/components/ui/spinner";
 import { addBookmarkAction, type ActionState } from "@/lib/actions";
 
 export function AddLinkForm() {
@@ -12,32 +15,40 @@ export function AddLinkForm() {
   }, [state]);
 
   return (
-    <form ref={formRef} action={action} className="flex flex-col gap-1.5">
-      <div className="flex items-center gap-2">
-        <label htmlFor="add-url" className="sr-only">
+    <form ref={formRef} action={action}>
+      <Field data-invalid={state?.error ? true : undefined} className="gap-1.5">
+        <FieldLabel htmlFor="add-url" className="sr-only">
           Link to save
-        </label>
-        <input
-          id="add-url"
-          name="url"
-          type="text"
-          inputMode="url"
-          autoComplete="off"
-          placeholder="Paste a link to save it"
-          className="min-w-0 flex-1 rounded-full border border-rule bg-white px-4 py-2 text-sm placeholder:text-ink-faint focus:border-action focus:outline-none"
-        />
-        <button
-          type="submit"
-          disabled={pending}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-white hover:bg-action disabled:opacity-60"
-        >
-          <Plus className="size-4" aria-hidden />
-          {pending ? "Saving…" : "Save"}
-        </button>
-      </div>
-      <p aria-live="polite" className={`min-h-5 px-4 text-xs ${state?.error ? "text-danger" : "text-ink-faint"}`}>
-        {state?.error ?? state?.message ?? ""}
-      </p>
+        </FieldLabel>
+        <InputGroup className="h-10 bg-card">
+          <InputGroupAddon>
+            <LinkIcon />
+          </InputGroupAddon>
+          <InputGroupInput
+            id="add-url"
+            name="url"
+            type="text"
+            inputMode="url"
+            autoComplete="off"
+            enterKeyHint="go"
+            placeholder="Paste a link to save it"
+            aria-invalid={state?.error ? true : undefined}
+          />
+          <InputGroupAddon align="inline-end">
+            <InputGroupButton type="submit" variant="default" size="sm" disabled={pending} className="h-8 px-3">
+              {pending ? <Spinner data-icon="inline-start" /> : <PlusIcon data-icon="inline-start" />}
+              {pending ? "Saving" : "Save"}
+            </InputGroupButton>
+          </InputGroupAddon>
+        </InputGroup>
+        {state?.error ? (
+          <FieldError className="px-1 text-xs">{state.error}</FieldError>
+        ) : (
+          <FieldDescription aria-live="polite" className="min-h-4 px-1 text-xs">
+            {state?.message ?? ""}
+          </FieldDescription>
+        )}
+      </Field>
     </form>
   );
 }

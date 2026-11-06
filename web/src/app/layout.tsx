@@ -1,6 +1,10 @@
 import { ClerkProvider } from "@clerk/nextjs";
-import type { Metadata } from "next";
+import { shadcn } from "@clerk/ui/themes";
+import type { Metadata, Viewport } from "next";
 import { Literata, Schibsted_Grotesk } from "next/font/google";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 import "./globals.css";
 
 const grotesk = Schibsted_Grotesk({
@@ -19,26 +23,23 @@ export const metadata: Metadata = {
   description: "Save pages, posts on X and YouTube videos in one click. AI summarizes and files them; find them again by describing them.",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  themeColor: "#e9edf1",
+};
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${grotesk.variable} ${literata.variable} antialiased`}>
+    <html lang="en" className={cn("antialiased", grotesk.variable, literata.variable)}>
       <body className="min-h-dvh">
         <ClerkProvider
           signInFallbackRedirectUrl="/library"
           signUpFallbackRedirectUrl="/library"
-          appearance={{
-            variables: {
-              colorPrimary: "#2446c7",
-              colorForeground: "#1b2430",
-              colorMutedForeground: "#4a5565",
-              colorDanger: "#b42318",
-              colorBackground: "#f9fafb",
-              fontFamily: "var(--font-grotesk), system-ui, sans-serif",
-              borderRadius: "0.75rem",
-            },
-          }}
+          appearance={{ theme: shadcn, variables: { colorInput: "var(--card)" } }}
         >
-          {children}
+          <TooltipProvider>{children}</TooltipProvider>
+          <Toaster position="top-center" />
         </ClerkProvider>
       </body>
     </html>

@@ -1,7 +1,14 @@
 "use client";
 
-import { Check, Copy } from "lucide-react";
+import { CheckIcon, CircleCheckIcon, CopyIcon, PlugIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { toast } from "sonner";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import { Spinner } from "@/components/ui/spinner";
 import { createExtensionTokenAction } from "@/lib/actions";
 
 type Phase = "idle" | "connecting" | "connected" | "manual";
@@ -20,6 +27,7 @@ export function ConnectExtension({ autoConnect }: { autoConnect: boolean }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [token, setToken] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [origin, setOrigin] = useState("");
   const [pending, start] = useTransition();
   const autoTried = useRef(false);
 
@@ -44,6 +52,7 @@ export function ConnectExtension({ autoConnect }: { autoConnect: boolean }) {
       setPhase("connecting");
       const newToken = await createExtensionTokenAction(`${browserName()} extension`);
       setToken(newToken);
+      setOrigin(window.location.origin);
       window.postMessage(
         { source: "auto-bookmark-app", type: "connect", token: newToken, apiBase: window.location.origin },
         window.location.origin,
@@ -61,50 +70,56 @@ export function ConnectExtension({ autoConnect }: { autoConnect: boolean }) {
 
   if (phase === "connected") {
     return (
-      <p className="flex items-center gap-2 rounded-lg bg-[#15803D]/10 px-4 py-3 font-medium text-[#15803D]">
-        <Check className="size-5" aria-hidden />
-        Connected. Click the Auto Bookmark button on any page to save it.
-      </p>
+      <Alert>
+        <CircleCheckIcon />
+        <AlertTitle>Connected</AlertTitle>
+        <AlertDescription>Click the Auto Bookmark button on any page to save it.</AlertDescription>
+      </Alert>
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-4">
-        <button
-          type="button"
-          onClick={connect}
-          disabled={pending || phase === "connecting"}
-          className="rounded-full bg-ink px-5 py-2.5 text-sm font-semibold text-white hover:bg-action disabled:opacity-60"
-        >
-          {phase === "connecting" ? "Connecting…" : "Connect extension"}
-        </button>
-        <span className="text-sm text-ink-faint">
-          {detected ? "Extension found in this browser." : "Extension not found in this browser yet."}
-        </span>
+      <div className="flex flex-wrap items-center gap-3">
+        <Button type="button" size="lg" onClick={connect} disabled={pending || phase === "connecting"}>
+          {phase === "connecting" ? <Spinner data-icon="inline-start" /> : <PlugIcon data-icon="inline-start" />}
+          {phase === "connecting" ? "Connecting" : "Connect extension"}
+        </Button>
+        <Badge variant={detected ? "secondary" : "outline"}>
+          {detected ? "Extension found in this browser" : "Extension not found in this browser yet"}
+        </Badge>
       </div>
       {phase === "manual" && token ? (
-        <div className="rounded-lg border border-rule bg-white p-4">
-          <p className="text-sm">
-            The extension didn&apos;t answer. Open its options (right-click the toolbar button, then
-            Options) and paste this key along with <strong>{typeof window !== "undefined" ? window.location.origin : ""}</strong> as the app address.
-          </p>
-          <div className="mt-3 flex items-center gap-2">
-            <code className="min-w-0 flex-1 truncate rounded bg-paper px-3 py-2 text-xs">{token}</code>
-            <button
-              type="button"
-              onClick={async () => {
-                await navigator.clipboard.writeText(token);
-                setCopied(true);
-              }}
-              className="inline-flex items-center gap-1.5 rounded-md border border-rule px-3 py-2 text-sm hover:border-ink"
-            >
-              {copied ? <Check className="size-4" aria-hidden /> : <Copy className="size-4" aria-hidden />}
-              {copied ? "Copied" : "Copy key"}
-            </button>
-          </div>
-          <p className="mt-2 text-xs text-ink-faint">This key is shown once. Revoke it below if it leaks.</p>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Paste this key into the extension</CardTitle>
+            <CardDescription>
+              The extension didn&apos;t answer. Open its options (right-click the toolbar button, then Options) and
+              paste this key, with <strong className="break-all text-foreground">{origin}</strong> as the app address.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <InputGroup>
+              <InputGroupInput readOnly value={token} aria-label="Extension key" className="font-mono text-xs md:text-xs" onFocus={(e) => e.currentTarget.select()} />
+              <InputGroupAddon align="inline-end">
+                <InputGroupButton
+                  variant="secondary"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(token);
+                    setCopied(true);
+                    toast.success("Key copied.");
+                  }}
+                >
+                  {copied ? <CheckIcon data-icon="inline-start" /> : <CopyIcon data-icon="inline-start" />}
+                  {copied ? "Copied" : "Copy"}
+                </InputGroupButton>
+              </InputGroupAddon>
+            </InputGroup>
+          </CardContent>
+          <CardFooter>
+            <p className="text-xs text-muted-foreground">This key is shown once. Revoke it below if it leaks.</p>
+          </CardFooter>
+        </Card>
       ) : null}
     </div>
   );

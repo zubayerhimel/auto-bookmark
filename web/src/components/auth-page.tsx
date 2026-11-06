@@ -2,13 +2,13 @@ import Link from "next/link";
 
 export function AuthPage({ children }: { children: React.ReactNode }) {
   return (
-    <main className="mx-auto flex min-h-dvh max-w-6xl flex-col px-5 py-8 sm:px-8">
+    <main className="mx-auto flex min-h-dvh max-w-6xl flex-col px-4 py-6 sm:px-8 sm:py-8">
       <header>
         <Link href="/" className="text-lg font-bold tracking-tight">
           Auto Bookmark
         </Link>
       </header>
-      <div className="flex flex-1 items-center justify-center py-10">{children}</div>
+      <div className="flex w-full flex-1 items-start justify-center py-8 sm:items-center sm:py-10 [&_.cl-rootBox]:max-w-full [&_.cl-cardBox]:max-w-full">{children}</div>
     </main>
   );
 }

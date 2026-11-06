@@ -3,3 +3,4 @@ allowBuilds:
   unrs-resolver: false
   esbuild: true
   supabase: true
+  core-js: false

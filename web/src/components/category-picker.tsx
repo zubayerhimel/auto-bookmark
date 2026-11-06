@@ -1,9 +1,26 @@
 "use client";
 
+import { SparklesIcon } from "lucide-react";
 import { useState, useTransition } from "react";
+import { Button } from "@/components/ui/button";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectSeparator,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import { setBookmarkCategoryAction } from "@/lib/actions";
 
 type Cat = { id: string; name: string };
+
+const NEW = "__new";
+const NONE = "__none";
 
 export function CategoryPicker({
   bookmarkId,
@@ -34,71 +51,76 @@ export function CategoryPicker({
     });
 
   return (
-    <div className="flex flex-col gap-2">
-      <label htmlFor="category" className="text-sm font-semibold">
-        Category
-      </label>
-      <select
-        id="category"
+    <Field data-invalid={error ? true : undefined} className="gap-2">
+      <FieldLabel htmlFor="category">Category</FieldLabel>
+      <Select
         disabled={pending}
-        value={creating ? "__new" : (currentId ?? "")}
-        onChange={(e) => {
-          const v = e.target.value;
-          if (v === "__new") setCreating(true);
-          else if (v) {
+        value={creating ? NEW : (currentId ?? NONE)}
+        onValueChange={(v) => {
+          if (v === NEW) setCreating(true);
+          else if (v !== NONE) {
             setCreating(false);
             apply(v);
           }
         }}
-        className="rounded-md border border-rule bg-white px-3 py-2 text-sm disabled:opacity-60"
       >
-        {!currentId ? <option value="">Uncategorized</option> : null}
-        {categories.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}
-          </option>
-        ))}
-        <option value="__new">New category…</option>
-      </select>
+        <SelectTrigger id="category" className="w-full bg-card">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent position="popper">
+          <SelectGroup>
+            {!currentId ? <SelectItem value={NONE}>Uncategorized</SelectItem> : null}
+            {categories.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+          <SelectSeparator />
+          <SelectGroup>
+            <SelectItem value={NEW}>New category…</SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
       {creating ? (
         <form
-          className="flex gap-2"
           onSubmit={(e) => {
             e.preventDefault();
             if (name.trim()) apply(`new:${name}`);
           }}
         >
-          <input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Category name"
-            aria-label="New category name"
-            className="min-w-0 flex-1 rounded-md border border-rule bg-white px-3 py-1.5 text-sm"
-          />
-          <button type="submit" disabled={pending} className="rounded-md bg-ink px-3 text-sm font-semibold text-white hover:bg-action">
-            Create
-          </button>
+          <InputGroup className="bg-card">
+            <InputGroupInput
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Category name"
+              aria-label="New category name"
+              enterKeyHint="done"
+            />
+            <InputGroupAddon align="inline-end">
+              <InputGroupButton type="submit" variant="default" disabled={pending || !name.trim()}>
+                Create
+              </InputGroupButton>
+            </InputGroupAddon>
+          </InputGroup>
         </form>
       ) : null}
-      <p className="text-xs text-ink-faint">
+      <FieldDescription className="flex items-center gap-1.5 text-xs">
+        {pending ? <Spinner className="size-3" /> : null}
         {pending
           ? "Moving…"
           : locked
             ? "You placed this by hand, so re-filing leaves it here."
             : "Chosen by AI. Pick another to pin it there."}
-      </p>
+      </FieldDescription>
       {locked ? (
-        <button
-          type="button"
-          disabled={pending}
-          onClick={() => apply("auto")}
-          className="self-start text-xs font-semibold text-action underline underline-offset-4"
-        >
+        <Button type="button" variant="link" size="sm" disabled={pending} onClick={() => apply("auto")} className="self-start px-0">
+          <SparklesIcon data-icon="inline-start" />
           Let AI choose again
-        </button>
+        </Button>
       ) : null}
-      {error ? <p className="text-xs text-danger">{error}</p> : null}
-    </div>
+      {error ? <FieldError className="text-xs">{error}</FieldError> : null}
+    </Field>
   );
 }

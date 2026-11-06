@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { BookmarkListItem } from "@/lib/bookmarks";
+import { cn } from "@/lib/utils";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
 import { Highlight } from "./highlight";
 import { TypeIcon } from "./type-icon";
@@ -14,10 +15,10 @@ export function BookmarkRow({ item, terms }: { item: Item; terms?: string[] }) {
   const blurb = item.summary || item.description;
 
   return (
-    <li className="group relative grid grid-cols-[4px_1fr] gap-4 py-4 sm:grid-cols-[4px_1fr_auto]">
+    <li className="group relative grid grid-cols-[4px_minmax(0,1fr)] gap-3 py-4 sm:grid-cols-[4px_minmax(0,1fr)_auto] sm:gap-4">
       <span
         aria-hidden
-        className={`rounded-full ${busy ? "ribbon-pending" : ""}`}
+        className={cn("rounded-full", busy && "ribbon-pending")}
         style={busy ? undefined : { background: color }}
       />
       <div className="min-w-0">
@@ -28,22 +29,22 @@ export function BookmarkRow({ item, terms }: { item: Item; terms?: string[] }) {
               ? "Couldn't process this one"
               : (item.categoryName ?? "Uncategorized")}
         </p>
-        <h3 className="mt-0.5 text-[1.05rem] leading-snug font-semibold text-pretty">
+        <h3 className="mt-0.5 text-[1.05rem] leading-snug font-semibold text-pretty break-words">
           <Link
             href={`/library/${item.id}`}
-            className="after:absolute after:inset-0 after:content-[''] hover:text-action"
+            className="rounded-sm after:absolute after:inset-0 after:rounded-lg after:content-[''] hover:text-action focus-visible:outline-none focus-visible:after:ring-3 focus-visible:after:ring-ring/50"
           >
             <Highlight text={title} terms={terms} />
           </Link>
         </h3>
         {failed && item.error ? (
-          <p className="mt-1 line-clamp-2 text-sm text-danger">{item.error}</p>
+          <p className="mt-1 line-clamp-2 text-sm text-destructive">{item.error}</p>
         ) : blurb ? (
-          <p className="mt-1 line-clamp-2 max-w-[68ch] font-serif text-[0.92rem] leading-relaxed text-ink-soft">
+          <p className="mt-1 line-clamp-2 max-w-[68ch] font-serif text-[0.92rem] leading-relaxed text-muted-foreground">
             <Highlight text={blurb} terms={terms} />
           </p>
         ) : null}
-        <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-faint">
+        <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-1.5" title={TYPE_LABEL[item.type]}>
             <TypeIcon type={item.type} />
             {item.type === "web" ? (item.siteName ?? hostOf(item.url)) : TYPE_LABEL[item.type]}
@@ -51,7 +52,7 @@ export function BookmarkRow({ item, terms }: { item: Item; terms?: string[] }) {
           {item.author && item.type !== "web" ? <span className="truncate">{item.author}</span> : null}
           <time dateTime={new Date(item.createdAt).toISOString()}>{timeAgo(item.createdAt)}</time>
           {item.tags.slice(0, 4).map((tag) => (
-            <span key={tag} className="text-ink-soft">
+            <span key={tag}>
               #<Highlight text={tag} terms={terms} />
             </span>
           ))}

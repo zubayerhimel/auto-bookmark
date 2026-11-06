@@ -1,51 +1,37 @@
 import Link from "next/link";
-import { Suspense } from "react";
-import { Puzzle, Tags } from "lucide-react";
-import { SidebarNav } from "@/components/sidebar-nav";
+import { cookies } from "next/headers";
 import { UserButton } from "@clerk/nextjs";
+import { AppSidebar } from "@/components/app-sidebar";
+import { Separator } from "@/components/ui/separator";
+import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { libraryStats, listCategoriesWithCounts } from "@/lib/bookmarks";
 import { requireUser } from "@/lib/session";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
-  const [categories, stats] = await Promise.all([
+  const [categories, stats, cookieStore] = await Promise.all([
     listCategoriesWithCounts(user.id),
     libraryStats(user.id),
+    cookies(),
   ]);
+  const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false";
 
   return (
-    <div className="mx-auto grid min-h-dvh max-w-[90rem] lg:grid-cols-[17rem_1fr]">
-      <aside className="flex flex-col gap-6 px-4 pt-5 pb-3 lg:sticky lg:top-0 lg:h-dvh lg:overflow-y-auto lg:py-7 lg:pr-3 lg:pl-6">
-        <Link href="/library" className="px-2.5 text-lg font-bold tracking-tight">
-          Auto Bookmark
-        </Link>
-        <nav aria-label="Categories" className="min-w-0">
-          <Suspense>
-            <SidebarNav categories={categories} total={stats.total} uncategorized={stats.uncategorized} />
-          </Suspense>
-        </nav>
-        <div className="mt-auto hidden flex-col gap-1 border-t border-rule pt-4 text-sm lg:flex">
-          <Link href="/categories" className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-ink-soft hover:bg-white/60 hover:text-ink">
-            <Tags className="size-4" aria-hidden /> Manage categories
+    <SidebarProvider defaultOpen={defaultOpen}>
+      <AppSidebar categories={categories} total={stats.total} uncategorized={stats.uncategorized} />
+      <SidebarInset className="min-w-0">
+        <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur md:static md:h-12 md:rounded-t-xl md:border-none md:bg-transparent md:backdrop-blur-none">
+          <SidebarTrigger />
+          <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4 md:hidden" />
+          <Link href="/library" className="font-bold tracking-tight md:hidden">
+            Auto Bookmark
           </Link>
-          <Link href="/extension" className="flex items-center gap-2 rounded-md px-2.5 py-1.5 text-ink-soft hover:bg-white/60 hover:text-ink">
-            <Puzzle className="size-4" aria-hidden /> Browser extension
-          </Link>
-          <div className="mt-3 px-2.5">
-            <UserButton showName />
-          </div>
-        </div>
-      </aside>
-      <main className="min-w-0 bg-sheet px-4 py-6 sm:px-8 lg:min-h-dvh lg:rounded-l-3xl lg:px-12 lg:py-10 lg:shadow-[-1px_0_0_var(--rule)]">
-        {children}
-        <nav className="mt-12 flex gap-5 border-t border-rule pt-4 text-sm text-ink-soft lg:hidden">
-          <Link href="/categories">Manage categories</Link>
-          <Link href="/extension">Browser extension</Link>
-          <span className="ml-auto">
+          <div className="ml-auto flex items-center md:hidden">
             <UserButton />
-          </span>
-        </nav>
-      </main>
-    </div>
+          </div>
+        </header>
+        <div className="flex-1 px-4 pt-4 pb-10 sm:px-8 md:pt-2 lg:px-12">{children}</div>
+      </SidebarInset>
+    </SidebarProvider>
   );
 }

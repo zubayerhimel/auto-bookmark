@@ -3,10 +3,15 @@ import { notFound } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { BookmarkType } from "@/db/schema";
+import { BookmarkPlusIcon, CircleAlertIcon, PuzzleIcon, RotateCwIcon } from "lucide-react";
 import { AddLinkForm } from "@/components/add-link-form";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { BookmarkRow } from "@/components/bookmark-row";
 import { SearchPanel } from "@/components/search-panel";
+import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Separator } from "@/components/ui/separator";
 import { retryFailedAction } from "@/lib/actions";
 import { listBookmarks, PAGE_SIZE } from "@/lib/bookmarks";
 import { requireUser } from "@/lib/session";
@@ -66,71 +71,94 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
     <div className="mx-auto max-w-4xl">
       <AutoRefresh active={busy} />
       <SearchPanel initialQuery={one(params.q) ?? ""}>
-        <header className="mt-10 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <header className="mt-8 flex flex-col gap-4 sm:mt-10 md:flex-row md:items-start md:justify-between">
           <div className="min-w-0">
             <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight">
               {category ? (
-                <span aria-hidden className="h-6 w-1.5 rounded-full" style={{ background: category.color }} />
+                <span aria-hidden className="h-6 w-1.5 shrink-0 rounded-full" style={{ background: category.color }} />
               ) : null}
-              {heading}
+              <span className="min-w-0 break-words">{heading}</span>
             </h1>
             {category?.description ? (
-              <p className="mt-1 max-w-[60ch] text-sm text-ink-soft">{category.description}</p>
+              <p className="mt-1 max-w-[60ch] text-sm text-muted-foreground">{category.description}</p>
             ) : null}
           </div>
-          <div className="w-full sm:max-w-sm">
+          <div className="w-full md:max-w-sm">
             <AddLinkForm />
           </div>
         </header>
 
-        <nav aria-label="Filter by kind" className="mt-4 flex gap-1 border-b border-rule">
-          {TYPES.map((t) => {
-            const current = (type ?? "all") === t.key;
-            return (
-              <Link
-                key={t.key}
-                href={qs({ type: t.key === "all" ? undefined : t.key, before: undefined })}
-                aria-current={current ? "page" : undefined}
-                className={`-mb-px border-b-2 px-3 py-2 text-sm ${
-                  current ? "border-ink font-semibold text-ink" : "border-transparent text-ink-soft hover:text-ink"
-                }`}
-              >
-                {t.label}
-              </Link>
-            );
-          })}
+        <nav aria-label="Filter by kind" className="-mx-4 mt-3 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <ul className="flex w-max gap-1">
+            {TYPES.map((t) => {
+              const current = (type ?? "all") === t.key;
+              return (
+                <li key={t.key}>
+                  <Button asChild variant={current ? "secondary" : "ghost"} size="sm">
+                    <Link
+                      href={qs({ type: t.key === "all" ? undefined : t.key, before: undefined })}
+                      aria-current={current ? "page" : undefined}
+                    >
+                      {t.label}
+                    </Link>
+                  </Button>
+                </li>
+              );
+            })}
+          </ul>
         </nav>
+        <Separator className="mt-3" />
 
         {failed > 0 ? (
-          <form action={retryFailedAction} className="mt-4 flex flex-wrap items-center gap-3 rounded-lg bg-danger/5 px-4 py-3 text-sm">
-            <span className="text-danger">
+          <Alert variant="destructive" className="mt-4">
+            <CircleAlertIcon />
+            <AlertTitle>
               {failed === 1 ? "One bookmark" : `${failed} bookmarks`} couldn&apos;t be summarized.
-            </span>
-            <button type="submit" className="font-semibold text-ink underline underline-offset-4 hover:text-action">
-              Try again
-            </button>
-          </form>
+            </AlertTitle>
+            <AlertDescription>Usually a timeout or a page that blocks readers. Trying again often works.</AlertDescription>
+            <AlertAction>
+              <form action={retryFailedAction}>
+                <Button type="submit" variant="outline" size="sm">
+                  <RotateCwIcon data-icon="inline-start" />
+                  Try again
+                </Button>
+              </form>
+            </AlertAction>
+          </Alert>
         ) : null}
 
         {items.length === 0 ? (
-          <div className="py-16">
-            {before || type || slug ? (
-              <p className="text-ink-soft">Nothing here yet.</p>
-            ) : (
-              <>
-                <p className="text-lg font-semibold">Your library is empty.</p>
-                <p className="mt-1 max-w-[52ch] text-ink-soft">
-                  Paste a link above, or{" "}
-                  <Link href="/extension" className="font-medium text-action underline underline-offset-4">
-                    connect the browser extension
-                  </Link>{" "}
-                  and click its button on any page, post on X, or YouTube video.
-                </p>
-              </>
-            )}
-          </div>
+          before || type || slug ? (
+            <Empty className="mt-6">
+              <EmptyHeader>
+                <EmptyTitle>Nothing here yet</EmptyTitle>
+                <EmptyDescription>Bookmarks you save that fit this filter will show up here.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : (
+            <Empty className="mt-6 border">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <BookmarkPlusIcon />
+                </EmptyMedia>
+                <EmptyTitle>Your library is empty</EmptyTitle>
+                <EmptyDescription>
+                  Paste a link above, or connect the browser extension and click its button on any page, post on X,
+                  or YouTube video.
+                </EmptyDescription>
+              </EmptyHeader>
+              <EmptyContent>
+                <Button asChild>
+                  <Link href="/extension">
+                    <PuzzleIcon data-icon="inline-start" />
+                    Connect the extension
+                  </Link>
+                </Button>
+              </EmptyContent>
+            </Empty>
+          )
         ) : (
-          <ol className="divide-y divide-rule">
+          <ol className="divide-y divide-border">
             {items.map((item) => (
               <BookmarkRow key={item.id} item={item} />
             ))}
@@ -138,12 +166,9 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
         )}
 
         {items.length === PAGE_SIZE ? (
-          <Link
-            href={qs({ before: items[items.length - 1].createdAt.toISOString() })}
-            className="mt-6 inline-block text-sm font-semibold text-action underline underline-offset-4"
-          >
-            Show older bookmarks
-          </Link>
+          <Button asChild variant="outline" className="mt-6">
+            <Link href={qs({ before: items[items.length - 1].createdAt.toISOString() })}>Show older bookmarks</Link>
+          </Button>
         ) : null}
       </SearchPanel>
     </div>

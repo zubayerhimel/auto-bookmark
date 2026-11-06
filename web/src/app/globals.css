@@ -152,6 +152,21 @@
   }
 }
 
+/* Landing page: one hanging ribbon per category, its length set by the bookmark count (--n). */
+.ribbon,
+.ribbon-mark {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - var(--notch, 4px)), 0 100%);
+}
+.ribbon {
+  --notch: 12px;
+  height: calc(7.5rem + var(--n) * 2.5px);
+}
+@media (width >= 64rem) {
+  .ribbon {
+    height: calc(9rem + var(--n) * 0.6rem);
+  }
+}
+
 /* A dashed ribbon marks bookmarks the AI is still reading. */
 .ribbon-pending {
   background: repeating-linear-gradient(180deg, var(--ink-faint) 0 6px, transparent 6px 10px);
@@ -165,6 +180,29 @@
   @keyframes ribbon-crawl {
     to {
       background-position: 0 20px;
+    }
+  }
+
+  /* The shelf drops in once on load; the newest category arrives last, then its caption. */
+  .ribbon {
+    animation: ribbon-drop 0.8s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+    animation-delay: calc(var(--i) * 60ms);
+  }
+  .ribbon[data-fresh] {
+    animation-duration: 0.9s;
+    animation-delay: 1.1s;
+  }
+  .ribbon-caption {
+    animation: caption-in 0.5s ease-out 1.7s both;
+  }
+  @keyframes ribbon-drop {
+    from {
+      transform: translateY(-100%);
+    }
+  }
+  @keyframes caption-in {
+    from {
+      opacity: 0;
     }
   }
 }

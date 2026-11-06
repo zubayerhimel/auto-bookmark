@@ -19,7 +19,7 @@ Requirements: Node 20+, pnpm, Docker (for the local Supabase stack).
 cd web
 pnpm install
 pnpm supabase start                  # local Supabase: API :54321, Postgres :54322, Studio :54323
-cp .env.example .env.local           # defaults already match the local stack; add an AI key
+cp .env.example .env.local           # defaults match the local stack; add OPENROUTER_API_KEY
 pnpm db:migrate
 pnpm dev                             # http://localhost:3000
 ```
@@ -45,7 +45,7 @@ To use Google sign-in locally, create a Google OAuth client (below) with the red
    | `NEXT_PUBLIC_SUPABASE_URL` | Supabase, Connect, Project URL |
    | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Project Settings, API Keys, publishable key (the legacy `anon` key also works, as `NEXT_PUBLIC_SUPABASE_ANON_KEY`) |
    | `DATABASE_URL` | Supabase, Connect, *Transaction pooler* string (port 6543) |
-   | `AI_PROVIDER` + `OPENAI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY` | Your AI key |
+   | `OPENROUTER_API_KEY` | [openrouter.ai/keys](https://openrouter.ai/keys) |
 
    The Vercel Supabase integration fills in the Supabase variables automatically
    (`POSTGRES_URL` is used when `DATABASE_URL` is absent).
@@ -55,9 +55,13 @@ To use Google sign-in locally, create a Google OAuth client (below) with the red
 
 ### AI settings
 
-`AI_PROVIDER` is `openai` (default) or `google`. Optional overrides: `AI_MODEL` and
-`AI_EMBEDDING_MODEL`. Defaults are `gpt-5.4-mini` + `text-embedding-3-small`, or
-`gemini-3.5-flash` + `gemini-embedding-001`.
+AI runs through [OpenRouter](https://openrouter.ai) by default, using `openai/gpt-5.4-mini` for
+summaries, categories and search, and `openai/text-embedding-3-small` for search vectors. Override
+them with `AI_MODEL` and `AI_EMBEDDING_MODEL` (any OpenRouter model id; the embedding model must
+return 1536 dimensions). The OpenRouter account needs credit for paid models.
+
+To call a provider directly instead, set `AI_PROVIDER` to `openai` (`OPENAI_API_KEY`) or `google`
+(`GOOGLE_GENERATIVE_AI_API_KEY`).
 
 Embeddings are stored as 1536-dimension vectors. If you switch embedding provider after saving
 bookmarks, use **Reprocess** on items (or re-save them) so search vectors stay comparable.

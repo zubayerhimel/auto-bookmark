@@ -2,38 +2,55 @@ import "server-only";
 import { embed, generateText, Output, type EmbeddingModel, type LanguageModel } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
 import { EMBEDDING_DIMENSIONS, type BookmarkType } from "@/db/schema";
 
-type Provider = "openai" | "google";
+type Provider = "openrouter" | "openai" | "google";
+
+const API_KEYS: Record<Provider, string> = {
+  openrouter: "OPENROUTER_API_KEY",
+  openai: "OPENAI_API_KEY",
+  google: "GOOGLE_GENERATIVE_AI_API_KEY",
+};
+
+const DEFAULT_MODELS: Record<Provider, { chat: string; embedding: string }> = {
+  openrouter: { chat: "openai/gpt-5.4-mini", embedding: "openai/text-embedding-3-small" },
+  openai: { chat: "gpt-5.4-mini", embedding: "text-embedding-3-small" },
+  google: { chat: "gemini-3.5-flash", embedding: "gemini-embedding-001" },
+};
 
 function provider(): Provider {
-  return process.env.AI_PROVIDER === "google" ? "google" : "openai";
+  const chosen = process.env.AI_PROVIDER;
+  if (chosen === "openrouter" || chosen === "openai" || chosen === "google") return chosen;
+  return "openrouter";
 }
 
 function assertConfigured() {
-  const key = provider() === "google" ? "GOOGLE_GENERATIVE_AI_API_KEY" : "OPENAI_API_KEY";
+  const key = API_KEYS[provider()];
   if (!process.env[key]) throw new Error(`AI is not set up: add ${key} to web/.env.local and restart the app.`);
+}
+
+function openrouter() {
+  return createOpenRouter({ appName: "Auto Bookmark" });
 }
 
 function languageModel(): LanguageModel {
   assertConfigured();
-  if (provider() === "google") {
-    const google = createGoogleGenerativeAI();
-    return google(process.env.AI_MODEL || "gemini-3.5-flash");
-  }
-  const openai = createOpenAI();
-  return openai(process.env.AI_MODEL || "gpt-5.4-mini");
+  const p = provider();
+  const id = process.env.AI_MODEL || DEFAULT_MODELS[p].chat;
+  if (p === "openrouter") return openrouter()(id);
+  if (p === "google") return createGoogleGenerativeAI()(id);
+  return createOpenAI()(id);
 }
 
 function embeddingModel(): EmbeddingModel {
   assertConfigured();
-  if (provider() === "google") {
-    return createGoogleGenerativeAI().embeddingModel(
-      process.env.AI_EMBEDDING_MODEL || "gemini-embedding-001",
-    );
-  }
-  return createOpenAI().embeddingModel(process.env.AI_EMBEDDING_MODEL || "text-embedding-3-small");
+  const p = provider();
+  const id = process.env.AI_EMBEDDING_MODEL || DEFAULT_MODELS[p].embedding;
+  if (p === "openrouter") return openrouter().textEmbeddingModel(id);
+  if (p === "google") return createGoogleGenerativeAI().embeddingModel(id);
+  return createOpenAI().embeddingModel(id);
 }
 
 export async function embedText(value: string, purpose: "document" | "query") {
@@ -48,6 +65,11 @@ export async function embedText(value: string, purpose: "document" | "query") {
       },
     },
   });
+  if (embedding.length !== EMBEDDING_DIMENSIONS) {
+    throw new Error(
+      `The embedding model returned ${embedding.length} dimensions; pick one that returns ${EMBEDDING_DIMENSIONS} (AI_EMBEDDING_MODEL).`,
+    );
+  }
   return embedding;
 }
 
@@ -115,6 +137,7 @@ export async function analyzeContent(
   const { output } = await generateText({
     model: languageModel(),
     output: Output.object({ schema: analysisSchema }),
+    maxOutputTokens: 2000,
     instructions: `You organize a person's personal bookmark library. For each saved item you write a
 faithful summary, pull out key points and tags, and file it under one category.
 Write in the same language as the content when it is not English, but category names stay in English.
@@ -139,6 +162,7 @@ export async function classifyItem(
   const { output } = await generateText({
     model: languageModel(),
     output: Output.object({ schema: classificationSchema }),
+    maxOutputTokens: 500,
     instructions: `You file items in a personal bookmark library under exactly one category.
 
 ${CATEGORY_RULES}
@@ -167,6 +191,7 @@ export async function planSearch(query: string, categories: string[]): Promise<Q
   const { output } = await generateText({
     model: languageModel(),
     output: Output.object({ schema: queryPlanSchema }),
+    maxOutputTokens: 500,
     instructions: `You turn a natural-language request for something in a personal bookmark library into search filters.
 Today is ${new Date().toISOString().slice(0, 10)}.
 - type: "youtube" for videos, "tweet" for posts/tweets/threads on X or Twitter, "web" for articles/pages/blogs, otherwise "any".

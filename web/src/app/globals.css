@@ -1,0 +1,89 @@
+@import "tailwindcss";
+
+:root {
+  --paper: #e9edf1;
+  --sheet: #f9fafb;
+  --ink: #1b2430;
+  --ink-soft: #4a5565;
+  --ink-faint: #7a8594;
+  --rule: #d3dae2;
+  --action: #2446c7;
+  --action-press: #1b3699;
+  --highlight: #f5d547;
+  --danger: #b42318;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-sheet: var(--sheet);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-rule: var(--rule);
+  --color-action: var(--action);
+  --color-action-press: var(--action-press);
+  --color-highlight: var(--highlight);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-grotesk);
+  --font-serif: var(--font-literata);
+
+  /* 1.2 modular scale from a 15px base */
+  --text-xs: 0.8125rem;
+  --text-sm: 0.875rem;
+  --text-base: 0.9375rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.35rem;
+  --text-2xl: 1.62rem;
+  --text-3xl: 2.25rem;
+  --text-4xl: 3.25rem;
+}
+
+html {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+body {
+  font-family: var(--font-grotesk), system-ui, sans-serif;
+  font-size: var(--text-base);
+  line-height: 1.5;
+}
+
+::selection {
+  background: var(--highlight);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--action);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+mark {
+  background: linear-gradient(transparent 35%, color-mix(in srgb, var(--highlight) 85%, transparent) 35%);
+  color: inherit;
+  padding: 0 1px;
+}
+
+/* A dashed ribbon marks bookmarks the AI is still reading. */
+.ribbon-pending {
+  background: repeating-linear-gradient(
+    180deg,
+    var(--ink-faint) 0 6px,
+    transparent 6px 10px
+  );
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ribbon-pending {
+    animation: ribbon-crawl 1.2s linear infinite;
+    background-size: 100% 20px;
+  }
+  @keyframes ribbon-crawl {
+    to {
+      background-position: 0 20px;
+    }
+  }
+}

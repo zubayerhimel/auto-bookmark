@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Auto Bookmark options</title>
+    <style>
+      :root { color-scheme: light; --ink: #1b2430; --soft: #4a5565; --faint: #7a8594; --rule: #d3dae2; --action: #2446c7; --danger: #b42318; }
+      body { font: 14px/1.5 system-ui, sans-serif; color: var(--ink); margin: 0; padding: 20px; min-width: 380px; }
+      h1 { font-size: 17px; margin: 0 0 4px; }
+      p { color: var(--soft); margin: 0 0 16px; }
+      label { display: block; font-weight: 600; margin: 14px 0 4px; }
+      input { box-sizing: border-box; width: 100%; padding: 8px 10px; border: 1px solid var(--rule); border-radius: 6px; font: inherit; }
+      input:focus { outline: none; border-color: var(--action); }
+      .hint { color: var(--faint); font-size: 12px; margin-top: 4px; }
+      .row { display: flex; gap: 12px; align-items: center; margin-top: 18px; }
+      button { padding: 8px 14px; border-radius: 6px; border: 0; background: var(--ink); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
+      button:hover { background: var(--action); }
+      button.link { background: none; color: var(--action); padding: 0; font-weight: 500; }
+      #status { font-size: 13px; }
+      #status.error { color: var(--danger); }
+    </style>
+  </head>
+  <body>
+    <h1>Auto Bookmark</h1>
+    <p id="state">Checking connection…</p>
+    <form id="form">
+      <label for="apiBase">App address</label>
+      <input id="apiBase" type="url" required placeholder="http://localhost:3000" />
+      <div class="hint">Where the Auto Bookmark web app runs.</div>
+      <label for="token">Access key</label>
+      <input id="token" type="password" autocomplete="off" placeholder="abk_…" />
+      <div class="hint">Leave empty to keep the current key. Use Connect to get one automatically.</div>
+      <div class="row">
+        <button type="submit">Save</button>
+        <button type="button" class="link" id="connect">Connect with my account</button>
+        <span id="status" role="status"></span>
+      </div>
+    </form>
+    <script type="module" src="options.js"></script>
+  </body>
+</html>

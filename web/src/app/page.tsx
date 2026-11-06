@@ -50,7 +50,8 @@ export default async function Home({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const next = safeNext((await searchParams).next);
+  const params = await searchParams;
+  const next = safeNext(params.next);
   if (await getUser()) redirect(next);
 
   return (
@@ -70,6 +71,11 @@ export default async function Home({
             fits, adding new categories as your interests change.
           </p>
           <SignInButton className="mt-9" callbackURL={next} />
+          {params.error === "signin" ? (
+            <p role="alert" className="mt-4 text-sm text-danger">
+              Google sign-in didn&apos;t finish. Please try again.
+            </p>
+          ) : null}
         </div>
 
         <figure aria-label="Example search" className="rounded-2xl bg-sheet p-5 shadow-[0_1px_0_var(--rule),0_24px_48px_-28px_rgba(27,36,48,0.35)] sm:p-7">

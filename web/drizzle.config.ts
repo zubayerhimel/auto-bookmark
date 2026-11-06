@@ -10,5 +10,9 @@ export default defineConfig({
   schema: "./src/db/schema.ts",
   out: "./drizzle",
   dialect: "postgresql",
-  dbCredentials: { url: process.env.DATABASE_URL! },
+  // Migrations need a direct or session-pooler connection (not the transaction pooler).
+  dbCredentials: {
+    url: (process.env.DIRECT_URL || process.env.POSTGRES_URL_NON_POOLING || process.env.DATABASE_URL)!,
+  },
+  entities: { roles: { provider: "supabase" } },
 });

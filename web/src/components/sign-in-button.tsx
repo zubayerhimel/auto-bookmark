@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { authClient } from "@/lib/auth-client";
+import { createClient } from "@/lib/supabase/client";
 
 export function SignInButton({ className = "", callbackURL = "/library" }: { className?: string; callbackURL?: string }) {
   const [pending, setPending] = useState(false);
@@ -11,7 +11,16 @@ export function SignInButton({ className = "", callbackURL = "/library" }: { cla
       disabled={pending}
       onClick={async () => {
         setPending(true);
-        await authClient.signIn.social({ provider: "google", callbackURL });
+        const redirectTo = new URL("/auth/callback", window.location.origin);
+        redirectTo.searchParams.set("next", callbackURL);
+        const { error } = await createClient().auth.signInWithOAuth({
+          provider: "google",
+          options: { redirectTo: redirectTo.toString(), queryParams: { prompt: "select_account" } },
+        });
+        if (error) {
+          setPending(false);
+          alert(`Couldn't start Google sign-in: ${error.message}`);
+        }
       }}
       className={`inline-flex items-center gap-3 rounded-full bg-ink px-6 py-3 text-base font-semibold text-white transition-colors hover:bg-action disabled:opacity-70 ${className}`}
     >

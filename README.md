@@ -4,36 +4,69 @@ Save any web page, post on X, or YouTube video with one click. AI reads it, writ
 and files it under a category, creating new categories as your interests change. Search your
 library by describing what you remember ("the video about sourdough starters from last spring").
 
-- `web/`: Next.js 16 app (Google sign-in, library, search, categories, API)
+- `web/`: Next.js 16 app (library, search, categories, API), deployable to Vercel
+- `web/supabase/`: Supabase config for local development
 - `extension/`: Chrome/Edge/Brave/Arc extension (Manifest V3, no build step)
 
-## Setup
+Supabase provides Google sign-in (Supabase Auth) and the database (Postgres with pgvector).
+The Next.js server handles saving, AI processing and search, so there is no other backend.
 
-Requirements: Node 20+, pnpm, Docker.
+## Local development
+
+Requirements: Node 20+, pnpm, Docker (for the local Supabase stack).
 
 ```bash
-docker compose up -d                 # Postgres 17 + pgvector on localhost:5433
 cd web
-cp .env.example .env.local           # then fill it in (see below)
 pnpm install
+pnpm supabase start                  # local Supabase: API :54321, Postgres :54322, Studio :54323
+cp .env.example .env.local           # defaults already match the local stack; add an AI key
 pnpm db:migrate
 pnpm dev                             # http://localhost:3000
 ```
 
-### `.env.local`
+To use Google sign-in locally, create a Google OAuth client (below) with the redirect URI
+`http://127.0.0.1:54321/auth/v1/callback`, put `SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID` and
+`SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET` in `web/supabase/.env`, then run
+`pnpm supabase stop && pnpm supabase start`.
 
-| Variable | Notes |
-| --- | --- |
-| `DATABASE_URL` | Default matches `docker-compose.yml`. |
-| `BETTER_AUTH_SECRET` | `openssl rand -base64 32` |
-| `BETTER_AUTH_URL` | `http://localhost:3000` locally, your domain in production. |
-| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google Cloud Console, APIs & Services, Credentials, *OAuth client ID* (Web application). Authorized redirect URI: `http://localhost:3000/api/auth/callback/google`. |
-| `AI_PROVIDER` | `openai` (default) or `google`. |
-| `OPENAI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY` | Key for the chosen provider. |
-| `AI_MODEL`, `AI_EMBEDDING_MODEL` | Optional overrides. Defaults: `gpt-5.4-mini` + `text-embedding-3-small`, or `gemini-3.5-flash` + `gemini-embedding-001`. |
+## Deploying (Supabase + Vercel)
+
+1. **Supabase**: create a project at [supabase.com](https://supabase.com).
+2. **Google OAuth**: in Google Cloud Console, go to APIs & Services, Credentials, *Create OAuth
+   client ID* (Web application). Add the redirect URI
+   `https://<project-ref>.supabase.co/auth/v1/callback`. Then in Supabase, go to
+   Authentication, Sign In / Providers, Google; enable it and paste the client ID and secret.
+3. **Tables**: from `web/`, run `DIRECT_URL="<session pooler string>" pnpm db:migrate`
+   (Supabase dashboard, Connect, *Session pooler*, port 5432).
+4. **Vercel**: import the repo and set **Root Directory** to `web`. Add these environment variables:
+
+   | Variable | Value |
+   | --- | --- |
+   | `NEXT_PUBLIC_SUPABASE_URL` | Supabase, Connect, Project URL |
+   | `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Project Settings, API Keys, publishable key (the legacy `anon` key also works, as `NEXT_PUBLIC_SUPABASE_ANON_KEY`) |
+   | `DATABASE_URL` | Supabase, Connect, *Transaction pooler* string (port 6543) |
+   | `AI_PROVIDER` + `OPENAI_API_KEY` or `GOOGLE_GENERATIVE_AI_API_KEY` | Your AI key |
+
+   The Vercel Supabase integration fills in the Supabase variables automatically
+   (`POSTGRES_URL` is used when `DATABASE_URL` is absent).
+5. **Redirect URLs**: in Supabase, go to Authentication, URL Configuration. Set Site URL to
+   `https://<your-app>.vercel.app` and add `https://<your-app>.vercel.app/**` to the redirect URLs.
+6. In the extension's options, set the app address to your Vercel URL and connect again.
+
+### AI settings
+
+`AI_PROVIDER` is `openai` (default) or `google`. Optional overrides: `AI_MODEL` and
+`AI_EMBEDDING_MODEL`. Defaults are `gpt-5.4-mini` + `text-embedding-3-small`, or
+`gemini-3.5-flash` + `gemini-embedding-001`.
 
 Embeddings are stored as 1536-dimension vectors. If you switch embedding provider after saving
 bookmarks, use **Reprocess** on items (or re-save them) so search vectors stay comparable.
+
+### Security
+
+The server connects to Postgres directly. Row-level security is enabled on every table, so the
+public Supabase Data API only exposes a signed-in user's own bookmarks and categories, and never
+extension access keys.
 
 ## Browser extension
 
@@ -68,7 +101,8 @@ options (right-click the toolbar button, then **Options**), then connect again.
 
 | Path | Purpose |
 | --- | --- |
-| `web/src/db/schema.ts` | Tables: auth, `category`, `bookmark` (vector + tsvector), `api_token` |
+| `web/src/db/schema.ts` | Tables and RLS policies: `category`, `bookmark` (vector + tsvector), `api_token` (users live in Supabase `auth.users`) |
+| `web/src/lib/supabase/*`, `web/src/proxy.ts` | Supabase Auth clients and session refresh |
 | `web/src/lib/extract.ts` | URL normalization, safe fetching, page/X/YouTube extraction |
 | `web/src/lib/ai.ts` | Prompts and models: analyze, classify, plan search, embed |
 | `web/src/lib/pipeline.ts` | Background processing and re-categorization |

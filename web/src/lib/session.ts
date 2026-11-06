@@ -1,11 +1,10 @@
 import "server-only";
 import { cache } from "react";
-import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createHash, randomBytes } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { auth } from "./auth";
+import { createClient } from "./supabase/server";
 
 export type SessionUser = {
   id: string;
@@ -15,10 +14,15 @@ export type SessionUser = {
 };
 
 export const getUser = cache(async (): Promise<SessionUser | null> => {
-  const session = await auth.api.getSession({ headers: await headers() });
-  if (!session) return null;
-  const { id, name, email, image } = session.user;
-  return { id, name, email, image: image ?? null };
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  const claims = data?.claims;
+  if (!claims?.sub) return null;
+  const meta = (claims.user_metadata ?? {}) as Record<string, unknown>;
+  const email = typeof claims.email === "string" ? claims.email : "";
+  const name = [meta.full_name, meta.name].find((v): v is string => typeof v === "string" && !!v);
+  const image = [meta.avatar_url, meta.picture].find((v): v is string => typeof v === "string" && !!v);
+  return { id: claims.sub, email, name: name ?? email.split("@")[0], image: image ?? null };
 });
 
 export async function requireUser(): Promise<SessionUser> {
@@ -55,6 +59,5 @@ export async function getRequestUserId(req: Request): Promise<string | null> {
       .where(eq(schema.apiToken.id, row.id));
     return row.userId;
   }
-  const session = await auth.api.getSession({ headers: req.headers });
-  return session?.user.id ?? null;
+  return (await getUser())?.id ?? null;
 }

@@ -1,9 +1,11 @@
 import { sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   customType,
   index,
   jsonb,
+  pgPolicy,
   pgTable,
   text,
   timestamp,
@@ -11,6 +13,7 @@ import {
   uuid,
   vector,
 } from "drizzle-orm/pg-core";
+import { authenticatedRole, authUid, authUsers } from "drizzle-orm/supabase";
 
 export const EMBEDDING_DIMENSIONS = 1536;
 
@@ -20,79 +23,21 @@ const tsvector = customType<{ data: string }>({
   },
 });
 
-// ---------- Better Auth tables ----------
-
-export const user = pgTable("user", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  emailVerified: boolean("email_verified").notNull().default(false),
-  image: text("image"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at")
+// User ids come from Supabase Auth (auth.users). The app's server talks to Postgres directly and
+// bypasses RLS; the policies below keep rows private if the tables are ever read through the
+// Supabase Data API with a user's session.
+const userId = () =>
+  uuid("user_id")
     .notNull()
-    .defaultNow()
-    .$onUpdate(() => new Date()),
-});
+    .references(() => authUsers.id, { onDelete: "cascade" });
 
-export const session = pgTable(
-  "session",
-  {
-    id: text("id").primaryKey(),
-    expiresAt: timestamp("expires_at").notNull(),
-    token: text("token").notNull().unique(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at")
-      .notNull()
-      .$onUpdate(() => new Date()),
-    ipAddress: text("ip_address"),
-    userAgent: text("user_agent"),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-  },
-  (t) => [index("session_user_id_idx").on(t.userId)],
-);
-
-export const account = pgTable(
-  "account",
-  {
-    id: text("id").primaryKey(),
-    accountId: text("account_id").notNull(),
-    providerId: text("provider_id").notNull(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
-    accessToken: text("access_token"),
-    refreshToken: text("refresh_token"),
-    idToken: text("id_token"),
-    accessTokenExpiresAt: timestamp("access_token_expires_at"),
-    refreshTokenExpiresAt: timestamp("refresh_token_expires_at"),
-    scope: text("scope"),
-    password: text("password"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at")
-      .notNull()
-      .$onUpdate(() => new Date()),
-  },
-  (t) => [index("account_user_id_idx").on(t.userId)],
-);
-
-export const verification = pgTable(
-  "verification",
-  {
-    id: text("id").primaryKey(),
-    identifier: text("identifier").notNull(),
-    value: text("value").notNull(),
-    expiresAt: timestamp("expires_at").notNull(),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at")
-      .notNull()
-      .defaultNow()
-      .$onUpdate(() => new Date()),
-  },
-  (t) => [index("verification_identifier_idx").on(t.identifier)],
-);
+const ownRows = (name: string, column: AnyPgColumn) =>
+  pgPolicy(name, {
+    for: "all",
+    to: authenticatedRole,
+    using: sql`${authUid} = ${column}`,
+    withCheck: sql`${authUid} = ${column}`,
+  });
 
 // ---------- App tables ----------
 
@@ -100,9 +45,7 @@ export const category = pgTable(
   "category",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+    userId: userId(),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     description: text("description"),
@@ -115,7 +58,10 @@ export const category = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date()),
   },
-  (t) => [uniqueIndex("category_user_slug_idx").on(t.userId, t.slug)],
+  (t) => [
+    uniqueIndex("category_user_slug_idx").on(t.userId, t.slug),
+    ownRows("category_owner", t.userId),
+  ],
 );
 
 export type BookmarkType = "web" | "tweet" | "youtube";
@@ -125,9 +71,7 @@ export const bookmark = pgTable(
   "bookmark",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+    userId: userId(),
     url: text("url").notNull(),
     type: text("type", { enum: ["web", "tweet", "youtube"] })
       .notNull()
@@ -177,6 +121,7 @@ export const bookmark = pgTable(
       t.embedding.op("vector_cosine_ops"),
     ),
     index("bookmark_search_idx").using("gin", t.searchVector),
+    ownRows("bookmark_owner", t.userId),
   ],
 );
 
@@ -184,16 +129,14 @@ export const apiToken = pgTable(
   "api_token",
   {
     id: uuid("id").primaryKey().defaultRandom(),
-    userId: text("user_id")
-      .notNull()
-      .references(() => user.id, { onDelete: "cascade" }),
+    userId: userId(),
     name: text("name").notNull(),
     tokenHash: text("token_hash").notNull().unique(),
     lastUsedAt: timestamp("last_used_at"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [index("api_token_user_idx").on(t.userId)],
-);
+).enableRLS(); // No policies: tokens are only ever read by the server.
 
 export type Bookmark = typeof bookmark.$inferSelect;
 export type Category = typeof category.$inferSelect;

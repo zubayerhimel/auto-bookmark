@@ -1,5 +1,5 @@
 import { after, NextResponse } from "next/server";
-import { parseSaveInput, saveBookmark } from "@/lib/bookmarks";
+import { bookmarkJson, findBookmarkByUrl, parseSaveInput, saveBookmark } from "@/lib/bookmarks";
 import { processBookmarks } from "@/lib/pipeline";
 import { getRequestUserId } from "@/lib/session";
 
@@ -26,4 +26,14 @@ export async function POST(req: Request) {
     const message = err instanceof Error ? err.message : "Couldn't save this link.";
     return NextResponse.json({ error: message }, { status: 400 });
   }
+}
+
+/** Looks up the bookmark for `?url=`, so the extension can show whether a page is already saved. */
+export async function GET(req: Request) {
+  const userId = await getRequestUserId(req);
+  if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const url = new URL(req.url).searchParams.get("url");
+  if (!url) return NextResponse.json({ error: "A url is required." }, { status: 400 });
+  const row = await findBookmarkByUrl(userId, url);
+  return NextResponse.json({ bookmark: row ? bookmarkJson(row) : null });
 }

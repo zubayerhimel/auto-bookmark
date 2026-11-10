@@ -72,10 +72,16 @@ write any of them.
 
 1. Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and pick the
    `extension/` folder.
-2. A tab opens at `http://localhost:3000/extension`. Sign in and press **Connect extension**.
+2. A sign-in tab opens. After signing in, the extension connects to your account automatically.
 3. Pin the extension. Click it (or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) on any page.
-   The badge shows ✓ when saved; a notification shows the category once the AI has filed it.
-   Right-click a link to save it without opening it. Select text first to keep it as a note.
+   The popup saves the page and shows its summary, category and tags once the AI has filed it,
+   with **Undo** if you didn't mean to. On a page you saved before, it shows that bookmark
+   instead of saving again.
+4. Search your library from the popup's search box; results open in a new tab.
+5. The toolbar button shows ✓ on pages that are already in your library.
+
+Right-click a page or link to save it without opening the popup (a notification shows the
+category). Select text first to keep it as a note.
 
 If the app runs somewhere other than `localhost:3000`, set the address in the extension's
 options (right-click the toolbar button, then **Options**), then connect again.
@@ -109,4 +115,5 @@ options (right-click the toolbar button, then **Options**), then connect again.
 | `web/src/lib/search.ts` | Hybrid semantic + keyword search |
 | `web/src/lib/actions.ts` | Server actions used by the UI |
 | `web/src/app/api/*` | Routes used by the extension |
-| `extension/background.js` | Toolbar button, context menus, page capture, notifications |
+| `extension/popup.html`, `extension/popup.js` | Popup: save status and summary, undo, library search |
+| `extension/background.js` | Saving and page capture, "already saved" badge, context menus, notifications |

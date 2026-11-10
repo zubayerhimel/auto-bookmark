@@ -174,6 +174,39 @@ export async function getBookmark(userId: string, id: string) {
 }
 
 /** Nearest neighbours by meaning, for the "related" list on a bookmark. */
+/** The bookmark saved for this URL (after normalizing it), or null. */
+export async function findBookmarkByUrl(userId: string, rawUrl: string) {
+  let url: string;
+  try {
+    url = normalizeUrl(rawUrl);
+  } catch {
+    return null;
+  }
+  const [row] = await db
+    .select({ bookmark: schema.bookmark, category: schema.category })
+    .from(schema.bookmark)
+    .leftJoin(schema.category, eq(schema.category.id, schema.bookmark.categoryId))
+    .where(and(eq(schema.bookmark.userId, userId), eq(schema.bookmark.url, url)))
+    .limit(1);
+  return row ?? null;
+}
+
+/** The bookmark as the extension sees it. */
+export function bookmarkJson({ bookmark: b, category }: NonNullable<Awaited<ReturnType<typeof getBookmark>>>) {
+  return {
+    id: b.id,
+    url: b.url,
+    type: b.type,
+    status: b.status,
+    error: b.error,
+    title: b.title,
+    summary: b.summary,
+    tags: b.tags,
+    createdAt: b.createdAt,
+    category: category ? { name: category.name, color: category.color } : null,
+  };
+}
+
 export async function relatedBookmarks(userId: string, id: string, limit = 5) {
   const [source] = await db
     .select({ embedding: schema.bookmark.embedding })

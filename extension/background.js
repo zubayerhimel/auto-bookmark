@@ -14,27 +14,57 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   }
 });
 
-chrome.action.onClicked.addListener((tab) => saveTab(tab));
-
-chrome.contextMenus.onClicked.addListener((info, tab) => {
-  if (info.menuItemId === "save-link" && info.linkUrl) {
-    saveData(tab?.id, { url: info.linkUrl, title: info.selectionText || null });
-  } else if (tab) {
-    saveTab(tab);
+// Clicking the toolbar button opens popup.html, which asks this worker to save (see "save" below),
+// so saving and polling carry on even after the popup closes.
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  const result =
+    info.menuItemId === "save-link" && info.linkUrl
+      ? await saveData(tab?.id, { url: info.linkUrl, title: info.selectionText || null })
+      : tab
+        ? await saveTab(tab)
+        : null;
+  if (!result || result.ok) return;
+  flash(tab?.id, "!", "#B42318", result.error);
+  if (result.reconnect) {
+    const { apiBase } = await getConfig();
+    chrome.tabs.create({ url: connectUrl(apiBase) });
   }
 });
 
 // ---------- Connecting to the web app ----------
 
 chrome.tabs.onUpdated.addListener(async (tabId, change, tab) => {
-  if (change.status !== "complete" || !tab.url) return;
+  if (!tab.url) return;
+  // Single-page sites (YouTube, X) change the URL without a full load.
+  if (change.url || change.status === "complete") refreshIndicator(tabId, tab.url);
+  if (change.status !== "complete") return;
   const { apiBase } = await getConfig();
   const url = new URL(tab.url);
   if (url.origin !== apiBase || !url.pathname.startsWith("/extension")) return;
   chrome.scripting.executeScript({ target: { tabId }, files: ["connect.js"] }).catch(() => {});
 });
 
+chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  if (tab?.url) refreshIndicator(tabId, tab.url);
+});
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // From popup.html (an extension page, so sender.id is ours and there is no sender.tab).
+  if (sender.id === chrome.runtime.id && !sender.tab) {
+    if (message?.type === "save") {
+      chrome.tabs
+        .get(message.tabId)
+        .then(saveTab)
+        .then(sendResponse, () => sendResponse({ ok: false, error: "That tab is gone." }));
+      return true;
+    }
+    if (message?.type === "indicator") {
+      savedCache.set(message.url, { saved: message.saved, at: Date.now() });
+      showIndicator(message.tabId, message.saved);
+      return;
+    }
+  }
   if (message?.type !== "connect") return;
   (async () => {
     const { apiBase } = await getConfig();
@@ -44,19 +74,53 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
     await chrome.storage.local.set({ token: message.token, apiBase: normalizeBase(apiBase) });
+    savedCache.clear();
     sendResponse({ ok: true });
   })();
   return true;
 });
 
+// ---------- "Already saved" indicator ----------
+
+const CACHE_MS = 5 * 60_000;
+/** url -> { saved, at }. Lives as long as the service worker; that's fine, it's only a cache. */
+const savedCache = new Map();
+
+function showIndicator(tabId, saved) {
+  if (saved) setBadge(tabId, "✓", "#15803D", "Saved to Auto Bookmark. Click to see it.");
+  else setBadge(tabId, "", "#15803D", "Save to Auto Bookmark");
+}
+
+async function refreshIndicator(tabId, url) {
+  if (tabId == null || !/^https?:/.test(url)) return;
+  const { apiBase, token } = await getConfig();
+  if (!token || url.startsWith(`${apiBase}/`)) return;
+
+  let entry = savedCache.get(url);
+  if (!entry || Date.now() - entry.at > CACHE_MS) {
+    try {
+      const res = await fetch(`${apiBase}/api/bookmarks?url=${encodeURIComponent(url)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) return;
+      const json = await res.json();
+      entry = { saved: Boolean(json.bookmark), at: Date.now() };
+      savedCache.set(url, entry);
+    } catch {
+      return;
+    }
+  }
+  // The tab may have moved on while we were asking.
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  if (tab?.url === url) showIndicator(tabId, entry.saved);
+}
+
 // ---------- Saving ----------
 
+/** Saves the page in a tab. Resolves to { ok: true, id } or { ok: false, error, reconnect? }. */
 async function saveTab(tab) {
-  if (!tab?.id || !tab.url) return;
-  if (!/^https?:/.test(tab.url)) {
-    flash(tab.id, "!", "#B42318", "Only web pages can be saved.");
-    return;
-  }
+  if (!tab?.id || !tab.url) return { ok: false, error: "There's no page to save here." };
+  if (!/^https?:/.test(tab.url)) return { ok: false, error: "Only web pages can be saved." };
   let data = { url: tab.url, title: tab.title };
   try {
     const [result] = await chrome.scripting.executeScript({
@@ -68,15 +132,17 @@ async function saveTab(tab) {
   } catch {
     // Some pages (e.g. the Chrome Web Store) block scripts; the server fetches the page instead.
   }
-  await saveData(tab.id, data);
+  const saved = await saveData(tab.id, data);
+  if (saved.ok) {
+    savedCache.set(tab.url, { saved: true, at: Date.now() });
+    showIndicator(tab.id, true);
+  }
+  return saved;
 }
 
 async function saveData(tabId, data) {
   const { apiBase, token } = await getConfig();
-  if (!token) {
-    chrome.tabs.create({ url: connectUrl(apiBase) });
-    return;
-  }
+  if (!token) return { ok: false, reconnect: true, error: "Connect the extension to your account first." };
 
   setBadge(tabId, "…", "#2446C7", "Saving…");
   let res;
@@ -87,24 +153,24 @@ async function saveData(tabId, data) {
       body: JSON.stringify(data),
     });
   } catch {
-    flash(tabId, "!", "#B42318", `Couldn't reach ${apiBase}. Is the app running?`);
-    return;
+    restoreIndicator(tabId);
+    return { ok: false, error: `Couldn't reach ${apiBase}. Is the app running?` };
   }
 
   if (res.status === 401) {
     await chrome.storage.local.remove("token");
-    flash(tabId, "!", "#B42318", "Reconnect the extension to your account.");
-    chrome.tabs.create({ url: connectUrl(apiBase) });
-    return;
+    restoreIndicator(tabId);
+    return { ok: false, reconnect: true, error: "Reconnect the extension to your account." };
   }
   const json = await res.json().catch(() => ({}));
   if (!res.ok) {
-    flash(tabId, "!", "#B42318", json.error || "Couldn't save this page.");
-    return;
+    restoreIndicator(tabId);
+    return { ok: false, error: json.error || "Couldn't save this page." };
   }
 
   flash(tabId, "✓", "#15803D", "Saved. Summarizing…");
   pollUntilFiled(json.id, apiBase, token);
+  return { ok: true, id: json.id };
 }
 
 async function pollUntilFiled(id, apiBase, token) {
@@ -121,6 +187,7 @@ async function pollUntilFiled(id, apiBase, token) {
     } catch {
       return;
     }
+    if ((item.status === "ready" || item.status === "failed") && (await popupIsOpen())) return;
     if (item.status === "ready") {
       notify(id, `Filed under ${item.category?.name ?? "Uncategorized"}`, item.title || item.url, item.summary);
       return;
@@ -159,9 +226,25 @@ function setBadge(tabId, text, color, title) {
 
 function flash(tabId, text, color, title) {
   setBadge(tabId, text, color, title);
-  setTimeout(() => {
-    setBadge(tabId, "", color, "Save to Auto Bookmark");
-  }, 4000);
+  setTimeout(() => restoreIndicator(tabId), 4000);
+}
+
+/** Puts the badge back to "saved" or blank for whatever page the tab now shows. */
+async function restoreIndicator(tabId) {
+  if (tabId == null) return;
+  const tab = await chrome.tabs.get(tabId).catch(() => null);
+  if (!tab) return;
+  const entry = tab.url && savedCache.get(tab.url);
+  showIndicator(tabId, Boolean(entry?.saved));
+}
+
+/** The popup shows the result itself, so a notification would be noise. */
+async function popupIsOpen() {
+  try {
+    return (await chrome.runtime.getContexts({ contextTypes: ["POPUP"] })).length > 0;
+  } catch {
+    return false;
+  }
 }
 
 // Runs inside the page (MAIN world) and must be self-contained.

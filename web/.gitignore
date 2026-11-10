@@ -40,3 +40,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# dotcrypt: never commit plaintext environment files
+.env
+.env.*
+!.env.*.enc
+!.env.example

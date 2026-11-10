@@ -1,5 +1,5 @@
 import "server-only";
-import { embed, generateText, Output, type EmbeddingModel, type LanguageModel } from "ai";
+import { embed, generateText, Output, streamText, type EmbeddingModel, type LanguageModel } from "ai";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
@@ -201,4 +201,52 @@ Today is ${new Date().toISOString().slice(0, 10)}.
     prompt: query,
   });
   return output;
+}
+
+export type AnswerSource = {
+  title: string;
+  kind: string;
+  savedOn: string;
+  summary: string | null;
+  keyPoints: string[];
+  highlight: string | null;
+  tags: string[];
+};
+
+/**
+ * Writes a short answer to a question using only the user's saved bookmarks, citing them as [n].
+ * Sources are numbered in the order given, starting at 1.
+ */
+export function streamAnswer(question: string, sources: AnswerSource[], abortSignal?: AbortSignal) {
+  const context = sources
+    .map((s, i) =>
+      [
+        `[${i + 1}] ${s.title} (${s.kind}, saved ${s.savedOn})`,
+        s.summary && `Summary: ${s.summary}`,
+        s.keyPoints.length ? `Key points:\n${s.keyPoints.map((p) => `- ${p}`).join("\n")}` : null,
+        s.highlight && `The user highlighted: ${s.highlight}`,
+        s.tags.length ? `Tags: ${s.tags.join(", ")}` : null,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    )
+    .join("\n\n");
+
+  return streamText({
+    model: languageModel(),
+    maxOutputTokens: 900,
+    abortSignal,
+    instructions: `You answer questions about a person's own bookmark library, using only the saved items below.
+Today is ${new Date().toISOString().slice(0, 10)}.
+- Answer directly in plain sentences, at most about 180 words. Short paragraphs; use "- " bullets only for lists.
+- No headings, no bold, no tables, no preamble like "Based on your bookmarks".
+- After each claim, cite the items it comes from as [1] or [1][3]. Only cite numbers that exist.
+- Use only what the items say. If they don't cover the question, say so in one sentence and mention
+  the closest thing that was saved, if any. Never fill gaps from general knowledge.
+- Speak to the user as "you" ("You saved a guide that...").
+
+Saved items:
+${context}`,
+    prompt: question,
+  });
 }

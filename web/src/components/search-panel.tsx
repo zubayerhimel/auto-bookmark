@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleAlertIcon, SearchIcon, SearchXIcon, XIcon } from "lucide-react";
+import { CircleAlertIcon, CornerDownLeftIcon, SearchIcon, SearchXIcon, XIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { BookmarkListItem } from "@/lib/bookmarks";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -9,6 +9,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "
 import { Kbd } from "@/components/ui/kbd";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { AskAnswer } from "./ask-answer";
 import { BookmarkRow, bookmarkListClass } from "./bookmark-row";
 
 type Result = {
@@ -52,6 +53,12 @@ export function SearchPanel({ initialQuery, children }: { initialQuery: string; 
   const data = current?.data ?? null;
   const error = current?.error ?? null;
   const loading = searching && !current;
+  const [asked, setAsked] = useState<string | null>(null);
+  const canAsk = trimmed.endsWith("?") || trimmed.split(/\s+/).length >= 3;
+  const askedThis = asked === trimmed;
+  const ask = () => {
+    if (canAsk) setAsked(trimmed);
+  };
 
   useEffect(() => {
     const url = new URL(window.location.href);
@@ -107,13 +114,22 @@ export function SearchPanel({ initialQuery, children }: { initialQuery: string; 
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Escape" && setQuery("")}
-            placeholder="Describe what you're looking for"
+            onKeyDown={(e) => {
+              if (e.key === "Escape") setQuery("");
+              if (e.key === "Enter" && !e.nativeEvent.isComposing) ask();
+            }}
+            placeholder="Search or ask about anything you've saved"
             autoComplete="off"
             enterKeyHint="search"
             className="text-base font-medium sm:text-lg [&::-webkit-search-cancel-button]:hidden"
           />
-          <InputGroupAddon align="inline-end" className="pr-2.5">
+          <InputGroupAddon align="inline-end" className="gap-1 pr-2.5">
+            {canAsk && !askedThis ? (
+              <InputGroupButton variant="secondary" size="sm" onClick={ask} className="text-action">
+                Ask
+                <CornerDownLeftIcon data-icon="inline-end" />
+              </InputGroupButton>
+            ) : null}
             {query ? (
               <InputGroupButton
                 size="icon-sm"
@@ -135,60 +151,79 @@ export function SearchPanel({ initialQuery, children }: { initialQuery: string; 
       {!searching ? (
         <>
           <p className="mt-2 px-1 text-sm text-muted-foreground">
-            Try “the video about sourdough starters” or “posts about TypeScript from last month”.
+            Find “the video about sourdough starters”, or ask “what did I save about sourdough hydration?” and
+            press Enter for an answer.
           </p>
           {children}
         </>
       ) : (
-        <section aria-live="polite" aria-busy={loading} className="mt-4">
-          {error ? (
-            <Alert variant="destructive">
-              <CircleAlertIcon />
-              <AlertTitle>Search didn&apos;t work</AlertTitle>
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : data ? (
-            <>
-              <p className="px-1 text-sm text-muted-foreground">
-                {data.understood ? `${describe(data.understood)}. ` : ""}
-                {data.results.length === 0
-                  ? ""
-                  : `${data.results.length} ${data.results.length === 1 ? "match" : "matches"}, closest first.`}
-              </p>
-              {data.results.length === 0 ? (
-                <Empty className="mt-6 border border-dashed bg-card">
-                  <EmptyHeader>
-                    <EmptyMedia variant="icon">
-                      <SearchXIcon />
-                    </EmptyMedia>
-                    <EmptyTitle>Nothing matches that yet</EmptyTitle>
-                    <EmptyDescription>
-                      Describe it differently: who made it, what it helped you do, or a phrase you remember from it.
-                    </EmptyDescription>
-                  </EmptyHeader>
-                </Empty>
-              ) : (
-                <ol className={`mt-4 ${bookmarkListClass}`}>
-                  {data.results.map((item) => (
-                    <BookmarkRow key={item.id} item={item} terms={data.terms} />
-                  ))}
-                </ol>
-              )}
-            </>
-          ) : (
-            <div className={`py-2 ${bookmarkListClass}`} aria-label="Searching">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="relative rounded-2xl border border-rule bg-card py-4 pr-4 pl-10 sm:pl-12">
-                  <span aria-hidden className="ribbon-mark absolute -top-px left-4 h-9 w-2.5 bg-paper sm:left-5" />
-                  <div className="flex flex-col gap-2">
-                    <Skeleton className="h-3 w-24" />
-                    <Skeleton className="h-5 w-3/4" />
-                    <Skeleton className="h-4 w-full" />
+        <section aria-busy={loading} className="mt-4">
+          {askedThis ? <AskAnswer key={trimmed} question={trimmed} /> : null}
+          {askedThis ? (
+            <h2 className="mt-8 px-1 text-sm font-semibold text-ink-soft">Matching bookmarks</h2>
+          ) : null}
+          <div aria-live="polite" className={askedThis ? "mt-1" : undefined}>
+            {error ? (
+              <Alert variant="destructive">
+                <CircleAlertIcon />
+                <AlertTitle>Search didn&apos;t work</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : data ? (
+              <>
+                <p className="px-1 text-sm text-muted-foreground">
+                  {data.understood ? `${describe(data.understood)}. ` : ""}
+                  {data.results.length === 0
+                    ? ""
+                    : `${data.results.length} ${data.results.length === 1 ? "match" : "matches"}, closest first.`}
+                  {canAsk && !askedThis && data.results.length > 0 ? (
+                    <>
+                      {" "}
+                      <button
+                        type="button"
+                        onClick={ask}
+                        className="rounded-sm font-medium text-action underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                      >
+                        Get an answer from these
+                      </button>
+                    </>
+                  ) : null}
+                </p>
+                {data.results.length === 0 ? (
+                  <Empty className="mt-6 border border-dashed bg-card">
+                    <EmptyHeader>
+                      <EmptyMedia variant="icon">
+                        <SearchXIcon />
+                      </EmptyMedia>
+                      <EmptyTitle>Nothing matches that yet</EmptyTitle>
+                      <EmptyDescription>
+                        Describe it differently: who made it, what it helped you do, or a phrase you remember from it.
+                      </EmptyDescription>
+                    </EmptyHeader>
+                  </Empty>
+                ) : (
+                  <ol className={`mt-4 ${bookmarkListClass}`}>
+                    {data.results.map((item) => (
+                      <BookmarkRow key={item.id} item={item} terms={data.terms} />
+                    ))}
+                  </ol>
+                )}
+              </>
+            ) : (
+              <div className={`py-2 ${bookmarkListClass}`} aria-label="Searching">
+                {[0, 1, 2].map((i) => (
+                  <div key={i} className="relative rounded-2xl border border-rule bg-card py-4 pr-4 pl-10 sm:pl-12">
+                    <span aria-hidden className="ribbon-mark absolute -top-px left-4 h-9 w-2.5 bg-paper sm:left-5" />
+                    <div className="flex flex-col gap-2">
+                      <Skeleton className="h-3 w-24" />
+                      <Skeleton className="h-5 w-3/4" />
+                      <Skeleton className="h-4 w-full" />
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </section>
       )}
     </div>

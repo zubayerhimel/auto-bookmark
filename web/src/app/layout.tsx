@@ -1,14 +1,14 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/ui/themes";
 import type { Metadata, Viewport } from "next";
-import { Literata, Schibsted_Grotesk } from "next/font/google";
+import { Inter, Literata } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
-const grotesk = Schibsted_Grotesk({
-  variable: "--font-grotesk",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
@@ -31,7 +31,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={cn("antialiased", grotesk.variable, literata.variable)}>
+    <html lang="en" className={cn("antialiased", inter.variable, literata.variable)}>
       <body className="min-h-dvh">
         <ClerkProvider
           signInFallbackRedirectUrl="/library"

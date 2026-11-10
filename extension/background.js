@@ -1,4 +1,4 @@
-import { getConfig, normalizeBase } from "./config.js";
+import { connectUrl, getConfig, normalizeBase } from "./config.js";
 
 const POLL_INTERVAL_MS = 2500;
 const POLL_TIMEOUT_MS = 90_000;
@@ -10,7 +10,7 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   });
   if (details.reason === "install") {
     const { apiBase } = await getConfig();
-    chrome.tabs.create({ url: `${apiBase}/extension?connect=1` });
+    chrome.tabs.create({ url: connectUrl(apiBase) });
   }
 });
 
@@ -74,7 +74,7 @@ async function saveTab(tab) {
 async function saveData(tabId, data) {
   const { apiBase, token } = await getConfig();
   if (!token) {
-    chrome.tabs.create({ url: `${apiBase}/extension?connect=1` });
+    chrome.tabs.create({ url: connectUrl(apiBase) });
     return;
   }
 
@@ -94,7 +94,7 @@ async function saveData(tabId, data) {
   if (res.status === 401) {
     await chrome.storage.local.remove("token");
     flash(tabId, "!", "#B42318", "Reconnect the extension to your account.");
-    chrome.tabs.create({ url: `${apiBase}/extension?connect=1` });
+    chrome.tabs.create({ url: connectUrl(apiBase) });
     return;
   }
   const json = await res.json().catch(() => ({}));

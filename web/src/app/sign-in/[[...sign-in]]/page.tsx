@@ -1,8 +1,29 @@
 import { SignIn } from "@clerk/nextjs";
+import { auth } from "@clerk/nextjs/server";
+import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { AuthPage } from "@/components/auth-page";
 
-export default function SignInPage() {
+/** Keeps only the path and query, so the sign-in page can't be used as an open redirect. */
+function safeRedirect(value: string | string[] | undefined) {
+  if (typeof value !== "string") return "/library";
+  try {
+    const url = new URL(value, "http://local");
+    if (url.pathname.startsWith("/sign-in")) return "/library";
+    return `${url.pathname}${url.search}`;
+  } catch {
+    return "/library";
+  }
+}
+
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const { userId } = await auth();
+  if (userId) redirect(safeRedirect((await searchParams).redirect_url));
+
   return (
     <AuthPage>
       <Suspense>

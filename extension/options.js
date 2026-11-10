@@ -1,4 +1,4 @@
-import { getConfig, normalizeBase } from "./config.js";
+import { connectUrl, getConfig, normalizeBase } from "./config.js";
 
 const form = document.getElementById("form");
 const apiBaseInput = document.getElementById("apiBase");
@@ -53,7 +53,7 @@ document.getElementById("connect").addEventListener("click", async () => {
   try {
     const apiBase = normalizeBase(apiBaseInput.value);
     await chrome.storage.local.set({ apiBase });
-    chrome.tabs.create({ url: `${apiBase}/extension?connect=1` });
+    chrome.tabs.create({ url: connectUrl(apiBase) });
   } catch (err) {
     show(err.message || "Check the address.", true);
   }

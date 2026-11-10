@@ -10,3 +10,8 @@ export function normalizeBase(value) {
   if (!/^https?:$/.test(url.protocol)) throw new Error("Use an http(s) address.");
   return url.origin;
 }
+
+/** Sign-in page that returns to the connect page; signed-in users skip straight to connecting. */
+export function connectUrl(apiBase) {
+  return `${apiBase}/sign-in?redirect_url=${encodeURIComponent("/extension?connect=1")}`;
+}

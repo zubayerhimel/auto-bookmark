@@ -48,7 +48,8 @@
   --sidebar-foreground: var(--ink);
   --sidebar-primary: var(--ink);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #ffffff;
+  --sidebar-accent: #dde3ea;
+  --sidebar-active: #ffffff;
   --sidebar-accent-foreground: var(--ink);
   --sidebar-border: var(--rule);
   --sidebar-ring: var(--action);
@@ -65,9 +66,9 @@
   --color-action-press: var(--action-press);
   --color-highlight: var(--highlight);
   --color-danger: var(--danger);
-  --font-sans: var(--font-grotesk), system-ui, sans-serif;
+  --font-sans: var(--font-inter), system-ui, sans-serif;
   --font-serif: var(--font-literata), Georgia, serif;
-  --font-heading: var(--font-grotesk), system-ui, sans-serif;
+  --font-heading: var(--font-inter), system-ui, sans-serif;
 
   /* 1.2 modular scale from a 15px base */
   --text-xs: 0.8125rem;
@@ -83,6 +84,7 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-active: var(--sidebar-active);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);

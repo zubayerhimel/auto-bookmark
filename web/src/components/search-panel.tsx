@@ -12,7 +12,11 @@ import { Spinner } from "@/components/ui/spinner";
 import { BookmarkRow, bookmarkListClass } from "./bookmark-row";
 
 type Result = {
-  results: (Omit<BookmarkListItem, "createdAt"> & { createdAt: string; score: number })[];
+  results: (Omit<BookmarkListItem, "createdAt" | "readAt"> & {
+    createdAt: string;
+    readAt: string | null;
+    score: number;
+  })[];
   understood: {
     searchText: string;
     type: "web" | "tweet" | "youtube" | null;

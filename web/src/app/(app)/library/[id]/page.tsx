@@ -164,7 +164,7 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
               </ul>
             </div>
           ) : null}
-          <BookmarkActions id={b.id} />
+          <BookmarkActions id={b.id} read={b.readAt !== null} ready={b.status === "ready"} />
         </aside>
       </div>
 

@@ -6,7 +6,10 @@ import { RowRibbon } from "./row-ribbon";
 import { Thumb } from "./thumb";
 import { TypeIcon } from "./type-icon";
 
-type Item = Omit<BookmarkListItem, "createdAt"> & { createdAt: Date | string };
+type Item = Omit<BookmarkListItem, "createdAt" | "readAt"> & {
+  createdAt: Date | string;
+  readAt: Date | string | null;
+};
 
 function previewOf(item: Item) {
   if (item.type === "youtube") {
@@ -17,13 +20,23 @@ function previewOf(item: Item) {
 }
 
 /** One saved item: a sheet with its category ribbon hanging from the top edge. */
-export function BookmarkRow({ item, terms }: { item: Item; terms?: string[] }) {
+export function BookmarkRow({
+  item,
+  terms,
+  showUnread = true,
+}: {
+  item: Item;
+  terms?: string[];
+  /** Off on the To read list, where every card is unread anyway. */
+  showUnread?: boolean;
+}) {
   const busy = item.status === "pending" || item.status === "processing";
   const failed = item.status === "failed";
   const color = failed ? "var(--danger)" : (item.categoryColor ?? "var(--rule)");
   const title = item.title || hostOf(item.url);
   const blurb = item.summary || item.description;
   const preview = previewOf(item);
+  const unread = showUnread && !item.readAt && item.status === "ready";
 
   return (
     <li className="group relative rounded-2xl border border-rule bg-card transition-[border-color] duration-150 ease-out hover:border-ink/25">
@@ -67,6 +80,12 @@ export function BookmarkRow({ item, terms }: { item: Item; terms?: string[] }) {
               </span>
             </span>
             {item.author && item.type !== "web" ? <span className="truncate">{item.author}</span> : null}
+            {unread ? (
+              <span className="inline-flex items-center gap-1.5 font-medium text-action">
+                <span aria-hidden className="size-1.5 rounded-full bg-current" />
+                To read
+              </span>
+            ) : null}
             <time dateTime={new Date(item.createdAt).toISOString()}>{timeAgo(item.createdAt)}</time>
             {item.tags.slice(0, 3).map((tag) => (
               <span key={tag}>

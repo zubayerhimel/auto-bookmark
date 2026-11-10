@@ -3,7 +3,7 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, ne } from "drizzle-orm";
+import { and, eq, isNull, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { saveBookmark } from "./bookmarks";
 import { findOrCreateCategory, pruneEmptyAiCategories, slugify, tidyName } from "./categories";
@@ -57,6 +57,27 @@ export async function reprocessBookmarkAction(id: string) {
   await ownBookmark(user.id, id);
   await db.update(schema.bookmark).set({ status: "pending", error: null }).where(eq(schema.bookmark.id, id));
   after(() => processBookmarks([id]));
+  refresh();
+}
+
+/** Puts a bookmark on (or takes it off) the reading list. */
+export async function setBookmarkReadAction(id: string, read: boolean) {
+  const user = await requireUser();
+  await ownBookmark(user.id, id);
+  await db
+    .update(schema.bookmark)
+    .set({ readAt: read ? new Date() : null })
+    .where(eq(schema.bookmark.id, id));
+  refresh();
+}
+
+/** Clears the reading list in one go. */
+export async function markAllReadAction() {
+  const user = await requireUser();
+  await db
+    .update(schema.bookmark)
+    .set({ readAt: new Date() })
+    .where(and(eq(schema.bookmark.userId, user.id), isNull(schema.bookmark.readAt)));
   refresh();
 }
 

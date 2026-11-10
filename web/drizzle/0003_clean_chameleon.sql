@@ -1,0 +1,1 @@
+ALTER TABLE "bookmark" ADD COLUMN "read_at" timestamp;

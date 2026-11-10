@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { and, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { BookmarkType } from "@/db/schema";
-import { BookmarkPlusIcon, CircleAlertIcon, PuzzleIcon, RotateCwIcon } from "lucide-react";
+import { BookmarkPlusIcon, CheckCheckIcon, CircleAlertIcon, PuzzleIcon, RotateCwIcon } from "lucide-react";
 import { AddLinkForm } from "@/components/add-link-form";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { BookmarkRow, bookmarkListClass } from "@/components/bookmark-row";
@@ -11,7 +11,7 @@ import { SearchPanel } from "@/components/search-panel";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { retryFailedAction } from "@/lib/actions";
+import { markAllReadAction, retryFailedAction } from "@/lib/actions";
 import { listBookmarks, PAGE_SIZE } from "@/lib/bookmarks";
 import { requireUser } from "@/lib/session";
 
@@ -31,6 +31,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
   const slug = one(params.category);
   const typeParam = one(params.type);
   const type = TYPES.some((t) => t.key === typeParam && t.key !== "all") ? (typeParam as BookmarkType) : undefined;
+  const unread = one(params.view) === "unread";
   const beforeParam = one(params.before);
   const before = beforeParam && !Number.isNaN(Date.parse(beforeParam)) ? new Date(beforeParam) : undefined;
 
@@ -48,16 +49,19 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
     categoryId: category?.id,
     uncategorized: slug === "uncategorized",
     type,
+    unread,
     before,
   });
   const busy = items.some((i) => i.status === "pending" || i.status === "processing");
   const failed = items.filter((i) => i.status === "failed").length;
 
-  const heading = category?.name ?? (slug === "uncategorized" ? "Uncategorized" : "All bookmarks");
+  const heading =
+    category?.name ?? (slug === "uncategorized" ? "Uncategorized" : unread ? "To read" : "All bookmarks");
   const qs = (patch: Record<string, string | undefined>) => {
     const next = new URLSearchParams();
     if (slug) next.set("category", slug);
     if (type) next.set("type", type);
+    if (unread) next.set("view", "unread");
     for (const [k, v] of Object.entries(patch)) {
       if (v) next.set(k, v);
       else next.delete(k);
@@ -81,6 +85,10 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
               </h1>
               {category?.description ? (
                 <p className="mt-1.5 max-w-[60ch] text-ink-soft">{category.description}</p>
+              ) : unread && !slug ? (
+                <p className="mt-1.5 max-w-[60ch] text-ink-soft">
+                  Everything you&apos;ve saved but not opened yet. Opening a bookmark takes it off this list.
+                </p>
               ) : null}
             </div>
           </div>
@@ -105,8 +113,31 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
                 </li>
               );
             })}
+            <li className="ml-auto pl-6">
+              <Link
+                href={qs({ view: unread ? undefined : "unread", before: undefined })}
+                data-on={unread}
+                className="group/toread inline-flex h-10 items-center gap-2 border-b-2 border-transparent text-sm font-medium text-ink-faint transition-colors duration-150 ease-out hover:text-ink data-[on=true]:border-action data-[on=true]:text-action"
+              >
+                <span
+                  aria-hidden
+                  className="size-2 rounded-full border border-current transition-colors duration-150 ease-out group-data-[on=true]/toread:bg-current"
+                />
+                Only to read
+                <span className="sr-only">{unread ? "(on)" : "(off)"}</span>
+              </Link>
+            </li>
           </ul>
         </nav>
+
+        {unread && !slug && !type && items.length > 0 ? (
+          <form action={markAllReadAction} className="mt-3 flex justify-end">
+            <Button type="submit" variant="ghost" size="sm" className="text-ink-soft">
+              <CheckCheckIcon data-icon="inline-start" />
+              Mark all as read
+            </Button>
+          </form>
+        ) : null}
 
         {failed > 0 ? (
           <Alert variant="destructive" className="mt-4">
@@ -127,7 +158,17 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
         ) : null}
 
         {items.length === 0 ? (
-          before || type || slug ? (
+          unread && !before ? (
+            <Empty className="mt-6">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <CheckCheckIcon />
+                </EmptyMedia>
+                <EmptyTitle>You&apos;re all caught up</EmptyTitle>
+                <EmptyDescription>New saves land here until you open them.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : before || type || slug ? (
             <Empty className="mt-6">
               <EmptyHeader>
                 <EmptyTitle>Nothing here yet</EmptyTitle>
@@ -159,7 +200,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
         ) : (
           <ol className={`mt-5 ${bookmarkListClass}`}>
             {items.map((item) => (
-              <BookmarkRow key={item.id} item={item} />
+              <BookmarkRow key={item.id} item={item} showUnread={!unread} />
             ))}
           </ol>
         )}

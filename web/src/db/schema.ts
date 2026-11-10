@@ -93,6 +93,8 @@ export const bookmark = pgTable(
       .defaultNow()
       .$onUpdate(() => new Date()),
     processedAt: timestamp("processed_at"),
+    /** When the user opened it; null means it's still on their reading list. */
+    readAt: timestamp("read_at"),
   },
   (t) => [
     uniqueIndex("bookmark_user_url_idx").on(t.userId, t.url),

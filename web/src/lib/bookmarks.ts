@@ -113,6 +113,7 @@ export const listFields = {
   status: schema.bookmark.status,
   error: schema.bookmark.error,
   createdAt: schema.bookmark.createdAt,
+  readAt: schema.bookmark.readAt,
   categoryId: schema.category.id,
   categoryName: schema.category.name,
   categorySlug: schema.category.slug,
@@ -133,6 +134,7 @@ export type BookmarkListItem = {
   status: "pending" | "processing" | "ready" | "failed";
   error: string | null;
   createdAt: Date;
+  readAt: Date | null;
   categoryId: string | null;
   categoryName: string | null;
   categorySlug: string | null;
@@ -143,12 +145,19 @@ export const PAGE_SIZE = 40;
 
 export async function listBookmarks(
   userId: string,
-  opts: { categoryId?: string | null; uncategorized?: boolean; type?: BookmarkType; before?: Date } = {},
+  opts: {
+    categoryId?: string | null;
+    uncategorized?: boolean;
+    type?: BookmarkType;
+    unread?: boolean;
+    before?: Date;
+  } = {},
 ): Promise<BookmarkListItem[]> {
   const conds: SQL[] = [eq(schema.bookmark.userId, userId)];
   if (opts.categoryId) conds.push(eq(schema.bookmark.categoryId, opts.categoryId));
   if (opts.uncategorized) conds.push(isNull(schema.bookmark.categoryId));
   if (opts.type) conds.push(eq(schema.bookmark.type, opts.type));
+  if (opts.unread) conds.push(isNull(schema.bookmark.readAt));
   if (opts.before) conds.push(lt(schema.bookmark.createdAt, opts.before));
   return db
     .select(listFields)
@@ -254,6 +263,7 @@ export async function libraryStats(userId: string) {
       total: sql<number>`count(*)::int`,
       uncategorized: sql<number>`count(*) filter (where ${schema.bookmark.categoryId} is null)::int`,
       busy: sql<number>`count(*) filter (where ${schema.bookmark.status} in ('pending','processing'))::int`,
+      unread: sql<number>`count(*) filter (where ${schema.bookmark.readAt} is null)::int`,
     })
     .from(schema.bookmark)
     .where(eq(schema.bookmark.userId, userId));

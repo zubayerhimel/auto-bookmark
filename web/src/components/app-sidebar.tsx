@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { BookmarkIcon, PuzzleIcon, TagsIcon } from "lucide-react";
+import { BookmarkIcon, BookOpenIcon, LibraryIcon, PuzzleIcon, TagsIcon } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import {
   Sidebar,
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/sidebar";
 
 type Cat = { id: string; name: string; slug: string; color: string; count: number };
-type Props = { categories: Cat[]; total: number; uncategorized: number };
+type Props = { categories: Cat[]; total: number; uncategorized: number; unread: number };
 
 function useCloseOnNavigate() {
   const { isMobile, setOpenMobile } = useSidebar();
@@ -32,14 +32,44 @@ function useCloseOnNavigate() {
   };
 }
 
-function CategoryMenu({ categories, total, uncategorized }: Props) {
+function useActiveKey() {
   const pathname = usePathname();
   const params = useSearchParams();
+  if (pathname !== "/library") return null;
+  const category = params.get("category");
+  if (category) return category;
+  return params.get("view") === "unread" ? "unread" : "all";
+}
+
+function ViewMenu({ total, unread }: Pick<Props, "total" | "unread">) {
+  const active = useActiveKey();
   const close = useCloseOnNavigate();
-  const active = pathname === "/library" ? (params.get("category") ?? "all") : null;
+  const items = [
+    { key: "all", href: "/library", label: "All bookmarks", count: total, Icon: LibraryIcon },
+    { key: "unread", href: "/library?view=unread", label: "To read", count: unread, Icon: BookOpenIcon },
+  ];
+  return (
+    <SidebarMenu>
+      {items.map(({ key, href, label, count, Icon }) => (
+        <SidebarMenuItem key={key}>
+          <SidebarMenuButton asChild isActive={active === key}>
+            <Link href={href} onClick={close} aria-current={active === key ? "page" : undefined}>
+              <Icon />
+              <span>{label}</span>
+            </Link>
+          </SidebarMenuButton>
+          {count > 0 ? <SidebarMenuBadge>{count}</SidebarMenuBadge> : null}
+        </SidebarMenuItem>
+      ))}
+    </SidebarMenu>
+  );
+}
+
+function CategoryMenu({ categories, uncategorized }: Props) {
+  const active = useActiveKey();
+  const close = useCloseOnNavigate();
 
   const items = [
-    { key: "all", href: "/library", label: "All bookmarks", count: total, color: "var(--ink)" },
     ...categories.map((c) => ({
       key: c.slug,
       href: `/library?category=${c.slug}`,
@@ -103,13 +133,22 @@ export function AppSidebar(props: Props) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Categories</SidebarGroupLabel>
           <SidebarGroupContent>
-            <Suspense fallback={<MenuFallback count={props.categories.length + 1} />}>
-              <CategoryMenu {...props} />
+            <Suspense fallback={<MenuFallback count={2} />}>
+              <ViewMenu total={props.total} unread={props.unread} />
             </Suspense>
           </SidebarGroupContent>
         </SidebarGroup>
+        {props.categories.length || props.uncategorized ? (
+          <SidebarGroup className="pt-0">
+            <SidebarGroupLabel>Categories</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <Suspense fallback={<MenuFallback count={props.categories.length} />}>
+                <CategoryMenu {...props} />
+              </Suspense>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ) : null}
       </SidebarContent>
       <SidebarSeparator />
       <SidebarFooter>

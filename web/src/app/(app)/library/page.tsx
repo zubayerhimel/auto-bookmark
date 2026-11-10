@@ -89,8 +89,8 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
           </div>
         </header>
 
-        <nav aria-label="Filter by kind" className="-mx-4 mt-4 overflow-x-auto border-b border-rule px-4 sm:mx-0 sm:px-0">
-          <ul className="flex w-max gap-6">
+        <nav aria-label="Filter by kind" className="-mx-4 mt-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
+          <ul className="flex min-w-full w-max gap-6 shadow-[inset_0_-1px_0_var(--rule)]">
             {TYPES.map((t) => {
               const current = (type ?? "all") === t.key;
               return (
@@ -98,7 +98,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
                   <Link
                     href={qs({ type: t.key === "all" ? undefined : t.key, before: undefined })}
                     aria-current={current ? "page" : undefined}
-                    className="-mb-px inline-flex h-10 items-center border-b-2 border-transparent text-sm font-medium text-ink-faint transition-colors duration-150 ease-out hover:text-ink aria-[current=page]:border-ink aria-[current=page]:text-ink"
+                    className="inline-flex h-10 items-center border-b-2 border-transparent text-sm font-medium text-ink-faint transition-colors duration-150 ease-out hover:text-ink aria-[current=page]:border-ink aria-[current=page]:text-ink"
                   >
                     {t.label}
                   </Link>

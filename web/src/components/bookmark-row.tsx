@@ -1,8 +1,8 @@
 import Link from "next/link";
 import type { BookmarkListItem } from "@/lib/bookmarks";
-import { cn } from "@/lib/utils";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
 import { Highlight } from "./highlight";
+import { RowRibbon } from "./row-ribbon";
 import { TypeIcon } from "./type-icon";
 
 type Item = Omit<BookmarkListItem, "createdAt"> & { createdAt: Date | string };
@@ -16,11 +16,7 @@ export function BookmarkRow({ item, terms }: { item: Item; terms?: string[] }) {
 
   return (
     <li className="group relative grid grid-cols-[4px_minmax(0,1fr)] gap-3 py-4 sm:grid-cols-[4px_minmax(0,1fr)_auto] sm:gap-4">
-      <span
-        aria-hidden
-        className={cn("rounded-full", busy && "ribbon-pending")}
-        style={busy ? undefined : { background: color }}
-      />
+      <RowRibbon busy={busy} color={color} />
       <div className="min-w-0">
         <p className="text-xs font-semibold" style={{ color: busy ? "var(--ink-faint)" : color }}>
           {busy

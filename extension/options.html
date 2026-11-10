@@ -13,8 +13,12 @@
       input:focus { outline: none; border-color: var(--action); }
       .hint { color: var(--faint); font-size: 12px; margin-top: 4px; }
       .row { display: flex; gap: 12px; align-items: center; margin-top: 18px; }
-      button { padding: 8px 14px; border-radius: 6px; border: 0; background: var(--ink); color: #fff; font: inherit; font-weight: 600; cursor: pointer; }
-      button:hover { background: var(--action); }
+      button { padding: 8px 14px; border-radius: 6px; border: 0; background: var(--ink); color: #fff; font: inherit; font-weight: 600; cursor: pointer;
+        transition: background-color 150ms cubic-bezier(0.23, 1, 0.32, 1), transform 160ms cubic-bezier(0.23, 1, 0.32, 1); }
+      button:active { transform: scale(0.97); }
+      button.link:active { transform: none; }
+      @media (hover: hover) and (pointer: fine) { button:hover { background: var(--action); } button.link:hover { background: none; } }
+      @media (prefers-reduced-motion: reduce) { button:active { transform: none; } }
       button.link { background: none; color: var(--action); padding: 0; font-weight: 500; }
       #status { font-size: 13px; }
       #status.error { color: var(--danger); }

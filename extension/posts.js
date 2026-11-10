@@ -278,8 +278,10 @@
     button {
       all: unset; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
       cursor: pointer; font: 600 13px/1 Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-      transition: background 120ms, color 120ms, box-shadow 120ms;
+      transition: background-color 150ms var(--ease), color 150ms var(--ease), box-shadow 150ms var(--ease), transform 160ms var(--ease);
     }
+    :host { --ease: cubic-bezier(0.23, 1, 0.32, 1); }
+    button:active { transform: scale(0.97); }
     svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
     .spin { width: 14px; height: 14px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
     @keyframes spin { to { rotate: 360deg; } }
@@ -287,24 +289,41 @@
 
     /* X action bar: matches the native icon buttons. */
     .inline { width: 34px; height: 34px; border-radius: 999px; color: rgb(113, 118, 123); }
-    .inline:hover { color: #2446c7; background: rgba(36, 70, 199, 0.1); }
     .inline.saved { color: #15803d; }
     .inline.error { color: #b42318; }
 
     /* Instagram / Facebook: floating pill. */
     .pill { height: 32px; padding: 0 12px 0 10px; border-radius: 999px; background: #fff; color: #1b2430;
       box-shadow: 0 1px 2px rgba(27,36,48,.12), 0 4px 14px rgba(27,36,48,.14), 0 0 0 1px rgba(27,36,48,.08); }
-    .pill:hover { background: #1b2430; color: #fff; }
     .pill.saved { color: #15803d; }
-    .pill.saved:hover { background: #fff; color: #15803d; cursor: default; }
+    .pill.saved { cursor: default; }
+    .saved:active { transform: none; }
     .pill.error { color: #b42318; }
     .pill svg { width: 16px; height: 16px; }
 
     .toast { position: fixed; left: 50%; bottom: 24px; translate: -50% 0; max-width: min(420px, calc(100vw - 32px));
       padding: 10px 14px; border-radius: 10px; background: #1b2430; color: #fff; font: 500 13px/1.45 Inter, ui-sans-serif, system-ui, sans-serif;
-      box-shadow: 0 8px 30px rgba(0,0,0,.25); animation: rise .18s ease-out; }
+      box-shadow: 0 8px 30px rgba(0,0,0,.25); transition: opacity 220ms var(--ease), translate 220ms var(--ease); }
+    @starting-style { .toast { opacity: 0; translate: -50% 8px; } }
+    .toast.leaving { opacity: 0; translate: -50% 4px; transition-duration: 150ms; }
     .toast.error { background: #b42318; }
-    @keyframes rise { from { opacity: 0; translate: -50% 8px; } }
+
+    /* The check pops in only when a save completes, not every time a saved post is hovered. */
+    .pop svg { transition: transform 260ms var(--ease), opacity 160ms var(--ease); }
+    @starting-style { .pop svg { transform: scale(0.6); opacity: 0; } }
+
+    @media (hover: hover) and (pointer: fine) {
+      .inline:hover { color: #2446c7; background: rgba(36, 70, 199, 0.1); }
+      .pill:hover { background: #1b2430; color: #fff; }
+      .inline.saved:hover { color: #15803d; background: rgba(21, 128, 61, 0.1); }
+      .pill.saved:hover { background: #fff; color: #15803d; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      button:active { transform: none; }
+      .pop svg { transform: none; }
+      @starting-style { .toast { translate: -50% 0; } .pop svg { transform: none; } }
+      .toast.leaving { translate: -50% 0; }
+    }
   `;
 
   function makeButton(kind, getPost) {
@@ -317,8 +336,11 @@
     const api = {
       el,
       url: null,
+      state: "idle",
       render(state = "idle", message) {
-        btn.className = `${kind} ${state}`;
+        const pop = api.state === "saving" && state === "saved";
+        api.state = state;
+        btn.className = `${kind} ${state}${pop ? " pop" : ""}`;
         const label =
           state === "saving" ? "Saving…" : state === "saved" ? "Saved" : state === "error" ? "Retry" : "Save";
         btn.replaceChildren(icon(state), ...(kind === "pill" ? [Object.assign(document.createElement("span"), { textContent: label })] : []));
@@ -363,7 +385,10 @@
     toastEl.box.className = `toast${isError ? " error" : ""}`;
     toastEl.holder.style.display = "block";
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => (toastEl.holder.style.display = "none"), isError ? 5000 : 2600);
+    toastTimer = setTimeout(() => {
+      toastEl.box.classList.add("leaving");
+      toastTimer = setTimeout(() => (toastEl.holder.style.display = "none"), 150);
+    }, isError ? 5000 : 2600);
   }
 
   // ---------- X: one button per post, in the action bar ----------

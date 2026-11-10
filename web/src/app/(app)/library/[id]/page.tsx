@@ -129,7 +129,7 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
             <Collapsible className="group/captured mt-8 max-w-[65ch]">
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="sm" className="-ml-2.5 text-muted-foreground">
-                  <ChevronRightIcon data-icon="inline-start" className="transition-transform group-data-[state=open]/captured:rotate-90" />
+                  <ChevronRightIcon data-icon="inline-start" className="transition-transform duration-200 ease-out group-data-[state=open]/captured:rotate-90" />
                   Text captured from the page
                 </Button>
               </CollapsibleTrigger>

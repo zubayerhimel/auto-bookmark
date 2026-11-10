@@ -56,6 +56,10 @@
 }
 
 @theme inline {
+  /* Motion: strong ease-out for UI response, a drawer curve for sheets. Never ease-in. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
   --color-paper: var(--paper);
   --color-sheet: var(--sheet);
   --color-ink: var(--ink);
@@ -187,7 +191,7 @@
 
   /* The shelf drops in once on load; the newest category arrives last, then its caption. */
   .ribbon {
-    animation: ribbon-drop 0.8s cubic-bezier(0.2, 0.9, 0.25, 1) both;
+    animation: ribbon-drop 0.8s var(--ease-out) both;
     animation-delay: calc(var(--i) * 60ms);
   }
   .ribbon[data-fresh] {
@@ -195,7 +199,7 @@
     animation-delay: 1.1s;
   }
   .ribbon-caption {
-    animation: caption-in 0.5s ease-out 1.7s both;
+    animation: caption-in 0.4s var(--ease-out) 1.7s both;
   }
   @keyframes ribbon-drop {
     from {
@@ -206,5 +210,19 @@
     from {
       opacity: 0;
     }
+  }
+}
+
+/* Reduced motion: keep fades so state changes still read, drop the movement. Unlayered so it beats utilities. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    --tw-enter-translate-x: 0;
+    --tw-enter-translate-y: 0;
+    --tw-exit-translate-x: 0;
+    --tw-exit-translate-y: 0;
+    --tw-enter-scale: 1;
+    --tw-exit-scale: 1;
   }
 }

@@ -118,8 +118,7 @@ export function CategoryItem({ category, others }: { category: Cat; others: { id
     });
 
   return (
-    <li className="relative rounded-2xl border border-rule bg-card py-5 pr-5 pl-11 sm:pl-14">
-      <span aria-hidden className="ribbon-mark absolute -top-px left-4 h-11 w-3 sm:left-6" style={{ background: category.color }} />
+    <li className="rounded-2xl border border-rule bg-card px-5 py-5 sm:px-6">
       <div className="min-w-0">
         {editing ? (
           <form action={action}>
@@ -165,8 +164,9 @@ export function CategoryItem({ category, others }: { category: Cat; others: { id
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <Link
                 href={`/library?category=${category.slug}`}
-                className="rounded-sm text-lg font-semibold transition-colors duration-150 ease-out hover:text-action"
+                className="inline-flex items-center gap-2.5 rounded-sm text-lg font-semibold transition-colors duration-150 ease-out hover:text-action"
               >
+                <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ background: category.color }} />
                 {category.name}
               </Link>
               <span className="text-sm text-ink-faint tabular-nums">

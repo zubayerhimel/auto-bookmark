@@ -79,6 +79,12 @@ write any of them.
    instead of saving again.
 4. Search your library from the popup's search box; results open in a new tab.
 5. The toolbar button shows ✓ on pages that are already in your library.
+6. Save single posts from a feed on X, Instagram and Facebook. On X, each post gets a bookmark
+   button next to Like and Share. On Instagram and Facebook, a **Save** button appears on the
+   post under your mouse. You can also right-click a post and choose **Save this post to Auto
+   Bookmark**. The post's own link, text, author and image are saved, not the whole feed.
+   Instagram and Facebook change their markup often, so this is best effort. If a Facebook post's
+   link can't be found, open the post (click its date) and save it from there.
 
 Right-click a page or link to save it without opening the popup (a notification shows the
 category). Select text first to keep it as a note.
@@ -88,7 +94,7 @@ options (right-click the toolbar button, then **Options**), then connect again.
 
 ## How it works
 
-1. **Save**: the extension captures what's on screen: tweet text and author on X, title,
+1. **Save**: the extension captures what's on screen: tweet text and author on X, a single post's text and images on Instagram and Facebook, title,
    channel and description on YouTube, the full page HTML elsewhere (so paywalled or
    logged-in pages work). It posts this to `POST /api/bookmarks` with a per-browser access key.
    Links added in the web app are fetched server-side instead (with SSRF protection), using
@@ -116,4 +122,5 @@ options (right-click the toolbar button, then **Options**), then connect again.
 | `web/src/lib/actions.ts` | Server actions used by the UI |
 | `web/src/app/api/*` | Routes used by the extension |
 | `extension/popup.html`, `extension/popup.js` | Popup: save status and summary, undo, library search |
+| `extension/posts.js` | Content script: per-post save buttons on X, Instagram and Facebook |
 | `extension/background.js` | Saving and page capture, "already saved" badge, context menus, notifications |

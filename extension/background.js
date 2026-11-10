@@ -2,12 +2,31 @@ import { connectUrl, getConfig, normalizeBase } from "./config.js";
 
 const POLL_INTERVAL_MS = 2500;
 const POLL_TIMEOUT_MS = 90_000;
+/** Sites where posts.js adds per-post save buttons (keep in sync with manifest.json). */
+const POST_SITES = [
+  "https://x.com/*",
+  "https://twitter.com/*",
+  "https://www.instagram.com/*",
+  "https://www.facebook.com/*",
+  "https://web.facebook.com/*",
+];
 
 chrome.runtime.onInstalled.addListener(async (details) => {
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({ id: "save-page", title: "Save page to Auto Bookmark", contexts: ["page", "selection"] });
     chrome.contextMenus.create({ id: "save-link", title: "Save link to Auto Bookmark", contexts: ["link"] });
+    chrome.contextMenus.create({
+      id: "save-post",
+      title: "Save this post to Auto Bookmark",
+      contexts: ["page", "selection", "link", "image", "video"],
+      documentUrlPatterns: POST_SITES,
+    });
   });
+  // Content scripts only load on new page loads; add the post buttons to tabs that are already open.
+  const tabs = await chrome.tabs.query({ url: POST_SITES });
+  for (const t of tabs) {
+    chrome.scripting.executeScript({ target: { tabId: t.id }, files: ["posts.js"] }).catch(() => {});
+  }
   if (details.reason === "install") {
     const { apiBase } = await getConfig();
     chrome.tabs.create({ url: connectUrl(apiBase) });
@@ -17,6 +36,12 @@ chrome.runtime.onInstalled.addListener(async (details) => {
 // Clicking the toolbar button opens popup.html, which asks this worker to save (see "save" below),
 // so saving and polling carry on even after the popup closes.
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
+  if (info.menuItemId === "save-post") {
+    // posts.js remembers which post was right-clicked and saves it like its own button does.
+    const res = await chrome.tabs.sendMessage(tab.id, { type: "saveContextPost" }).catch(() => null);
+    if (!res?.ok) flash(tab.id, "!", "#B42318", "Couldn't find a post there. Reload the page and try again.");
+    return;
+  }
   const result =
     info.menuItemId === "save-link" && info.linkUrl
       ? await saveData(tab?.id, { url: info.linkUrl, title: info.selectionText || null })
@@ -65,6 +90,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       return;
     }
   }
+  // From posts.js, our content script on X, Instagram and Facebook.
+  if (sender.id === chrome.runtime.id && sender.tab) {
+    if (message?.type === "savePost" && message.data?.url) {
+      saveData(sender.tab.id, message.data).then(async (result) => {
+        if (result.ok) savedCache.set(message.data.url, { saved: true, at: Date.now() });
+        else if (result.reconnect) chrome.tabs.create({ url: connectUrl((await getConfig()).apiBase) });
+        sendResponse(result);
+      });
+      return true;
+    }
+    if (message?.type === "lookupPost" && message.url) {
+      isSaved(message.url).then((saved) => sendResponse({ saved }));
+      return true;
+    }
+  }
   if (message?.type !== "connect") return;
   (async () => {
     const { apiBase } = await getConfig();
@@ -96,23 +136,30 @@ async function refreshIndicator(tabId, url) {
   const { apiBase, token } = await getConfig();
   if (!token || url.startsWith(`${apiBase}/`)) return;
 
-  let entry = savedCache.get(url);
-  if (!entry || Date.now() - entry.at > CACHE_MS) {
-    try {
-      const res = await fetch(`${apiBase}/api/bookmarks?url=${encodeURIComponent(url)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) return;
-      const json = await res.json();
-      entry = { saved: Boolean(json.bookmark), at: Date.now() };
-      savedCache.set(url, entry);
-    } catch {
-      return;
-    }
-  }
+  const saved = await isSaved(url);
+  if (saved == null) return;
   // The tab may have moved on while we were asking.
   const tab = await chrome.tabs.get(tabId).catch(() => null);
-  if (tab?.url === url) showIndicator(tabId, entry.saved);
+  if (tab?.url === url) showIndicator(tabId, saved);
+}
+
+/** Whether this URL is in the library: true, false, or null when we can't tell. */
+async function isSaved(url) {
+  const cached = savedCache.get(url);
+  if (cached && Date.now() - cached.at < CACHE_MS) return cached.saved;
+  const { apiBase, token } = await getConfig();
+  if (!token) return null;
+  try {
+    const res = await fetch(`${apiBase}/api/bookmarks?url=${encodeURIComponent(url)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) return null;
+    const saved = Boolean((await res.json()).bookmark);
+    savedCache.set(url, { saved, at: Date.now() });
+    return saved;
+  } catch {
+    return null;
+  }
 }
 
 // ---------- Saving ----------

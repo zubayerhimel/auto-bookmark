@@ -3,7 +3,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { analyzeContent, classifyItem, embedText } from "./ai";
 import { findOrCreateCategory, listCategoryHints, pruneEmptyAiCategories } from "./categories";
-import { extractFromUrl } from "./extract";
+import { extractFromUrl, socialSite } from "./extract";
 
 /** Small in-process concurrency gate so bulk jobs don't fire hundreds of AI calls at once. */
 function createLimiter(max: number) {
@@ -50,7 +50,8 @@ export async function processBookmark(id: string) {
 
   try {
     const item = { ...b };
-    const thinContent = !item.content || (item.type !== "tweet" && item.content.length < 300);
+    const social = item.type === "tweet" || socialSite(item.url) !== null;
+    const thinContent = !item.content || (!social && item.content.length < 300);
     if (thinContent) {
       try {
         const extracted = await extractFromUrl(item.url);
@@ -93,8 +94,8 @@ export async function processBookmark(id: string) {
       categoryId = category.id;
     }
 
-    // Keep the page's own title for articles and videos; posts on X get the AI's descriptive title.
-    const title = item.type === "tweet" || !item.title ? analysis.title : item.title;
+    // Keep the page's own title for articles and videos; social posts get the AI's descriptive title.
+    const title = social || !item.title ? analysis.title : item.title;
     const tags = [...new Set(analysis.tags.map((t) => t.toLowerCase().trim()).filter(Boolean))].slice(0, 10);
 
     const embedding = await embedText(

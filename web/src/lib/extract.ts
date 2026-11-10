@@ -48,13 +48,23 @@ export function tweetMatch(raw: string) {
   return null;
 }
 
+/** "Instagram" or "Facebook" for posts on those sites; their pages sit behind a login, so the extension's capture is all we get. */
+export function socialSite(raw: string): "Instagram" | "Facebook" | null {
+  try {
+    const host = new URL(raw).hostname.replace(/^(www|m|web|mbasic)\./, "");
+    if (host === "instagram.com") return "Instagram";
+    if (host === "facebook.com" || host === "fb.com") return "Facebook";
+  } catch {}
+  return null;
+}
+
 export function detectType(url: string): BookmarkType {
   if (youtubeId(url)) return "youtube";
   if (tweetMatch(url)) return "tweet";
   return "web";
 }
 
-const TRACKING_PARAMS = /^(utm_\w+|fbclid|gclid|mc_cid|mc_eid|ref_src|ref_url|igshid)$/i;
+const TRACKING_PARAMS = /^(utm_\w+|fbclid|gclid|mc_cid|mc_eid|ref_src|ref_url|igshid|igsh|img_index|mibextid|rdid|__cft__.*|__tn__|__xts__.*)$/i;
 
 /** Canonical form used for de-duplication. */
 export function normalizeUrl(raw: string): string {
@@ -66,6 +76,10 @@ export function normalizeUrl(raw: string): string {
   if (yt) return `https://www.youtube.com/watch?v=${yt}`;
   const tw = tweetMatch(u.toString());
   if (tw) return `https://x.com/${tw.handle}/status/${tw.id}`;
+  if (socialSite(u.toString()) === "Instagram") {
+    const ig = u.pathname.match(/^\/(?:[\w.]+\/)?(p|reel|tv)\/([\w-]+)/);
+    if (ig) return `https://www.instagram.com/${ig[1]}/${ig[2]}/`;
+  }
   u.hash = "";
   for (const key of [...u.searchParams.keys()]) {
     if (TRACKING_PARAMS.test(key)) u.searchParams.delete(key);

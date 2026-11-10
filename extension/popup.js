@@ -35,6 +35,16 @@ function h(tag, props = {}, ...children) {
   return el;
 }
 
+/** A white card with a ribbon hanging from its top edge. `flag` is a colour, "pending", or { color, drop }. */
+function sheet(flag, ...children) {
+  const opts = typeof flag === "object" && flag ? flag : { color: flag };
+  const ribbon =
+    opts.color === "pending"
+      ? h("i", { class: "pending" })
+      : h("i", { class: opts.drop ? "drop" : null, style: { background: opts.color } });
+  return h("div", { class: "sheet" }, h("span", { class: "flag", "aria-hidden": "true" }, ribbon), ...children);
+}
+
 function show(...nodes) {
   main.replaceChildren(...nodes.filter(Boolean));
 }
@@ -115,51 +125,65 @@ function renderConnect(message = "Sign in to start saving pages. Auto Bookmark s
   header.hidden = true;
   footer.hidden = true;
   show(
-    h("div", { class: "eyebrow" }, "Not connected"),
-    h("p", { class: "title" }, "Connect your account"),
-    h("p", { class: "muted" }, message),
-    h("div", { class: "actions" }, h("button", { class: "btn primary", onclick: () => openTab(connectUrl(config.apiBase)) }, "Sign in and connect")),
+    sheet(
+      "var(--action)",
+      h("p", { class: "title" }, "Connect your account"),
+      h("p", { class: "muted" }, message),
+      h("div", { class: "actions" }, h("button", { class: "btn primary", onclick: () => openTab(connectUrl(config.apiBase)) }, "Sign in and connect")),
+    ),
   );
 }
 
 function renderError(message, retry) {
   showPage(
-    h("div", { class: "eyebrow err" }, "Couldn't save"),
-    h("p", { class: "title" }, tab?.title || hostOf(tab?.url ?? "")),
-    h("p", { class: "muted" }, message),
-    retry ? h("div", { class: "actions" }, h("button", { class: "btn primary", onclick: retry }, "Try again")) : null,
+    sheet(
+      "var(--danger)",
+      h("div", { class: "status err" }, "Couldn't save this page"),
+      h("p", { class: "title" }, tab?.title || hostOf(tab?.url ?? "")),
+      h("p", { class: "muted" }, message),
+      retry ? h("div", { class: "actions" }, h("button", { class: "btn primary", onclick: retry }, "Try again")) : null,
+    ),
   );
 }
 
 function renderSaving(label) {
   showPage(
-    h("div", { class: "eyebrow" }, h("span", { class: "spinner" }), label),
-    h("p", { class: "title" }, tab.title || hostOf(tab.url)),
-    h("div", { class: "site" }, hostOf(tab.url)),
-    h("div", { class: "skeleton", style: { width: "100%", marginTop: "14px" } }),
-    h("div", { class: "skeleton", style: { width: "92%" } }),
-    h("div", { class: "skeleton", style: { width: "64%" } }),
+    sheet(
+      "pending",
+      h("div", { class: "status" }, h("span", { class: "spinner" }), label),
+      h("p", { class: "title" }, tab.title || hostOf(tab.url)),
+      h("div", { class: "site" }, hostOf(tab.url)),
+      h("div", { class: "skeleton", style: { width: "100%", marginTop: "14px" } }),
+      h("div", { class: "skeleton", style: { width: "92%" } }),
+      h("div", { class: "skeleton", style: { width: "64%" } }),
+    ),
   );
 }
 
-function categoryChip(category) {
-  if (!category) return h("span", { class: "chip" }, h("i", { style: { background: "var(--rule)" } }), "Uncategorized");
-  return h("span", { class: "chip" }, h("i", { style: { background: category.color } }), category.name);
-}
-
 function renderBookmark(b, { fresh }) {
-  const eyebrow =
+  const status =
     b.status === "failed"
-      ? h("div", { class: "eyebrow err" }, "Saved, but the summary failed")
+      ? h("div", { class: "status err" }, "Saved, but the summary failed")
       : b.status === "ready"
-        ? h("div", { class: "eyebrow ok" }, fresh ? "Saved and filed" : `Saved ${timeAgo(b.createdAt)}`)
-        : h("div", { class: "eyebrow" }, h("span", { class: "spinner" }), "Summarizing…");
+        ? h("div", { class: "status ok" }, fresh ? "Saved and filed" : `Saved ${timeAgo(b.createdAt)}`)
+        : h("div", { class: "status" }, h("span", { class: "spinner" }), "Summarizing…");
+  const flag =
+    b.status === "failed"
+      ? "var(--danger)"
+      : b.status === "ready"
+        ? { color: b.category?.color ?? "var(--rule)", drop: fresh }
+        : "pending";
 
   const body =
     b.status === "ready"
       ? [
           b.summary ? h("p", { class: "summary" }, b.summary) : null,
-          h("div", { class: "meta" }, categoryChip(b.category), ...(b.tags ?? []).slice(0, 4).map((t) => h("span", { class: "tag" }, `#${t}`))),
+          h(
+            "div",
+            { class: "meta" },
+            h("span", { class: "category", style: { color: b.category?.color } }, b.category?.name ?? "Uncategorized"),
+            ...(b.tags ?? []).slice(0, 4).map((t) => h("span", { class: "tag" }, `#${t}`)),
+          ),
         ]
       : b.status === "failed"
         ? [h("p", { class: "muted" }, b.error || "Retry it from your library.")]
@@ -170,33 +194,42 @@ function renderBookmark(b, { fresh }) {
 
   const remove = h("button", { class: "btn danger", onclick: () => removeBookmark(b, remove) }, fresh ? "Undo" : "Remove");
   showPage(
-    eyebrow,
-    h("p", { class: "title" }, b.title || tab.title || hostOf(b.url)),
-    h("div", { class: "site" }, hostOf(b.url)),
-    ...body,
-    h(
-      "div",
-      { class: "actions" },
-      h("button", { class: "btn primary", onclick: () => openTab(`${config.apiBase}/library/${b.id}`) }, "Open in library"),
-      b.status === "failed" ? h("button", { class: "btn", onclick: savePage }, "Try again") : null,
-      remove,
+    sheet(
+      flag,
+      status,
+      h("p", { class: "title" }, b.title || tab.title || hostOf(b.url)),
+      h("div", { class: "site" }, hostOf(b.url)),
+      ...body,
+      h(
+        "div",
+        { class: "actions" },
+        h("button", { class: "btn primary", onclick: () => openTab(`${config.apiBase}/library/${b.id}`) }, "Open in library"),
+        b.status === "failed" ? h("button", { class: "btn", onclick: savePage }, "Try again") : null,
+        remove,
+      ),
     ),
   );
 }
 
 function renderRemoved() {
   showPage(
-    h("div", { class: "eyebrow" }, "Removed"),
-    h("p", { class: "title" }, tab.title || hostOf(tab.url)),
-    h("p", { class: "muted" }, "This page is no longer in your library."),
-    h("div", { class: "actions" }, h("button", { class: "btn primary", onclick: savePage }, "Save it again")),
+    sheet(
+      "var(--rule)",
+      h("div", { class: "status" }, "Removed"),
+      h("p", { class: "title" }, tab.title || hostOf(tab.url)),
+      h("p", { class: "muted" }, "This page is no longer in your library."),
+      h("div", { class: "actions" }, h("button", { class: "btn primary", onclick: savePage }, "Save it again")),
+    ),
   );
 }
 
 function renderUnsavable() {
   showPage(
-    h("div", { class: "eyebrow" }, "Nothing to save here"),
-    h("p", { class: "muted" }, "Open a web page, post on X or YouTube video to save it. You can still search your library above."),
+    sheet(
+      "var(--rule)",
+      h("p", { class: "title" }, "Nothing to save here"),
+      h("p", { class: "muted" }, "Open a web page, post or YouTube video to save it. You can still search your library above."),
+    ),
   );
 }
 
@@ -256,7 +289,7 @@ async function runSearch(query) {
   const run = ++searchRun;
   searching = true;
   show(
-    h("div", { class: "eyebrow" }, h("span", { class: "spinner" }), "Searching…"),
+    h("div", { class: "status" }, h("span", { class: "spinner" }), "Searching…"),
     h("div", { class: "skeleton", style: { width: "70%" } }),
     h("div", { class: "skeleton", style: { width: "95%" } }),
     h("div", { class: "skeleton", style: { width: "60%", marginTop: "18px" } }),
@@ -269,13 +302,13 @@ async function runSearch(query) {
     if (run !== searchRun) return;
     if (err instanceof Unauthorized) return handleError(err);
     return show(
-      h("div", { class: "eyebrow err", style: { justifyContent: "space-between" } }, "Search failed", h("button", { class: "link", type: "button", onclick: clearSearch }, "← This page")),
+      h("div", { class: "status err split" }, "Search failed", h("button", { class: "link", type: "button", onclick: clearSearch }, "Back to this page")),
       h("p", { class: "muted" }, err.message),
     );
   }
   if (run !== searchRun) return;
 
-  const back = h("button", { class: "link", type: "button", onclick: clearSearch }, "← This page");
+  const back = h("button", { class: "link", type: "button", onclick: clearSearch }, "Back to this page");
   const u = data.understood;
   const understood =
     u && (u.type || u.category || u.savedAfter || u.savedBefore)
@@ -284,20 +317,20 @@ async function runSearch(query) {
           { class: "understood" },
           "Looking for ",
           [
-            u.searchText ? `“${u.searchText}”` : null,
+            u.searchText ? h("q", {}, u.searchText) : null,
             u.type ? { web: "web pages", tweet: "posts on X", youtube: "YouTube videos" }[u.type] : null,
             u.category ? `in ${u.category}` : null,
             u.savedAfter ? `saved after ${new Date(u.savedAfter).toLocaleDateString()}` : null,
             u.savedBefore ? `saved before ${new Date(u.savedBefore).toLocaleDateString()}` : null,
           ]
             .filter(Boolean)
-            .join(" · "),
+            .flatMap((part, i) => (i ? [" ", part] : [part])),
         )
       : null;
 
   const results = data.results.slice(0, 8);
   show(
-    h("div", { class: "eyebrow", style: { justifyContent: "space-between" } }, `${data.results.length} result${data.results.length === 1 ? "" : "s"}`, back),
+    h("div", { class: "status split" }, `${data.results.length} result${data.results.length === 1 ? "" : "s"}`, back),
     understood,
     results.length === 0
       ? h("p", { class: "muted" }, "Nothing matches. Try describing it differently.")
@@ -316,12 +349,14 @@ async function runSearch(query) {
                 h(
                   "div",
                   { class: "row" },
-                  h("i", { style: { background: r.categoryColor || "var(--rule)" } }),
-                  r.categoryName || "Uncategorized",
-                  " · ",
-                  hostOf(r.url),
-                  " · ",
-                  timeAgo(r.createdAt),
+                  h(
+                    "span",
+                    { class: "cat" },
+                    h("i", { class: "mark", style: { background: r.categoryColor || "var(--rule)" } }),
+                    r.categoryName || "Uncategorized",
+                  ),
+                  h("span", {}, hostOf(r.url)),
+                  h("span", {}, timeAgo(r.createdAt)),
                 ),
               ),
             ),

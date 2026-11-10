@@ -9,7 +9,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "
 import { Kbd } from "@/components/ui/kbd";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
-import { BookmarkRow } from "./bookmark-row";
+import { BookmarkRow, bookmarkListClass } from "./bookmark-row";
 
 type Result = {
   results: (Omit<BookmarkListItem, "createdAt"> & { createdAt: string; score: number })[];
@@ -93,7 +93,7 @@ export function SearchPanel({ initialQuery, children }: { initialQuery: string; 
         <label htmlFor="library-search" className="sr-only">
           Search your bookmarks
         </label>
-        <InputGroup className="h-12 rounded-xl bg-card shadow-xs sm:h-14">
+        <InputGroup className="h-12 rounded-2xl bg-card shadow-[0_1px_2px_rgb(27_36_48/0.05)] sm:h-14">
           <InputGroupAddon className="pl-3.5">
             {loading ? <Spinner className="text-ring" /> : <SearchIcon />}
           </InputGroupAddon>
@@ -152,7 +152,7 @@ export function SearchPanel({ initialQuery, children }: { initialQuery: string; 
                   : `${data.results.length} ${data.results.length === 1 ? "match" : "matches"}, closest first.`}
               </p>
               {data.results.length === 0 ? (
-                <Empty className="mt-6 border">
+                <Empty className="mt-6 border border-dashed bg-card">
                   <EmptyHeader>
                     <EmptyMedia variant="icon">
                       <SearchXIcon />
@@ -164,7 +164,7 @@ export function SearchPanel({ initialQuery, children }: { initialQuery: string; 
                   </EmptyHeader>
                 </Empty>
               ) : (
-                <ol className="mt-2 divide-y divide-border">
+                <ol className={`mt-4 ${bookmarkListClass}`}>
                   {data.results.map((item) => (
                     <BookmarkRow key={item.id} item={item} terms={data.terms} />
                   ))}
@@ -172,10 +172,10 @@ export function SearchPanel({ initialQuery, children }: { initialQuery: string; 
               )}
             </>
           ) : (
-            <div className="flex flex-col gap-6 py-4" aria-label="Searching">
+            <div className={`py-2 ${bookmarkListClass}`} aria-label="Searching">
               {[0, 1, 2].map((i) => (
-                <div key={i} className="grid grid-cols-[4px_1fr] gap-4">
-                  <Skeleton className="h-full rounded-full" />
+                <div key={i} className="relative rounded-2xl border border-rule bg-card py-4 pr-4 pl-10 sm:pl-12">
+                  <span aria-hidden className="ribbon-mark absolute -top-px left-4 h-9 w-2.5 bg-paper sm:left-5" />
                   <div className="flex flex-col gap-2">
                     <Skeleton className="h-3 w-24" />
                     <Skeleton className="h-5 w-3/4" />

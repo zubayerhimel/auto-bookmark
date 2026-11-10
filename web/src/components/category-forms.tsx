@@ -118,8 +118,8 @@ export function CategoryItem({ category, others }: { category: Cat; others: { id
     });
 
   return (
-    <li className="grid grid-cols-[5px_minmax(0,1fr)] gap-4 py-5">
-      <span aria-hidden className="rounded-full" style={{ background: category.color }} />
+    <li className="relative rounded-2xl border border-rule bg-card py-5 pr-5 pl-11 sm:pl-14">
+      <span aria-hidden className="ribbon-mark absolute -top-px left-4 h-11 w-3 sm:left-6" style={{ background: category.color }} />
       <div className="min-w-0">
         {editing ? (
           <form action={action}>
@@ -165,27 +165,32 @@ export function CategoryItem({ category, others }: { category: Cat; others: { id
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <Link
                 href={`/library?category=${category.slug}`}
-                className="rounded-sm text-lg font-semibold hover:text-action"
+                className="rounded-sm text-lg font-semibold transition-colors duration-150 ease-out hover:text-action"
               >
                 {category.name}
               </Link>
-              <Badge variant="secondary">
+              <span className="text-sm text-ink-faint tabular-nums">
                 {category.count} {category.count === 1 ? "bookmark" : "bookmarks"}
-              </Badge>
-              <Badge variant="outline">{category.source === "ai" ? "Created by AI" : "Created by you"}</Badge>
+              </span>
+              {category.source === "ai" ? (
+                <Badge variant="outline" className="text-ink-soft">
+                  <SparklesIcon />
+                  Created by AI
+                </Badge>
+              ) : null}
             </div>
-            <p className="mt-1 max-w-[60ch] text-sm text-muted-foreground">
+            <p className={`mt-1 max-w-[60ch] text-sm ${category.description ? "text-ink-soft" : "text-ink-faint italic"}`}>
               {category.description ?? "No description. Add one so the AI knows what goes here."}
             </p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <Button type="button" variant="outline" size="sm" onClick={() => setEditing(true)}>
+            <div className="-ml-2.5 mt-3 flex flex-wrap items-center gap-1.5">
+              <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(true)}>
                 <PencilIcon data-icon="inline-start" />
                 Rename or describe
               </Button>
               {others.length ? (
                 <div className="flex min-w-0 items-center gap-2">
                   <Select value={mergeInto} onValueChange={setMergeInto}>
-                    <SelectTrigger size="sm" aria-label={`Merge ${category.name} into`} className="w-40 bg-card sm:w-44">
+                    <SelectTrigger size="sm" aria-label={`Merge ${category.name} into`} className="w-40 border-transparent bg-transparent shadow-none hover:bg-muted sm:w-44">
                       <SelectValue placeholder="Merge into…" />
                     </SelectTrigger>
                     <SelectContent>
@@ -198,15 +203,17 @@ export function CategoryItem({ category, others }: { category: Cat; others: { id
                       </SelectGroup>
                     </SelectContent>
                   </Select>
-                  <Button type="button" variant="secondary" size="sm" disabled={!mergeInto || pending} onClick={merge}>
-                    <GitMergeIcon data-icon="inline-start" />
-                    Merge
-                  </Button>
+                  {mergeInto ? (
+                    <Button type="button" variant="secondary" size="sm" disabled={pending} onClick={merge}>
+                      <GitMergeIcon data-icon="inline-start" />
+                      Merge
+                    </Button>
+                  ) : null}
                 </div>
               ) : null}
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button type="button" variant="destructive" size="sm" disabled={pending}>
+                  <Button type="button" variant="ghost" size="sm" disabled={pending} className="text-destructive hover:bg-destructive/10 hover:text-destructive">
                     <Trash2Icon data-icon="inline-start" />
                     Delete
                   </Button>

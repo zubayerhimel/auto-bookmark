@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, ChevronRightIcon, CircleAlertIcon, ExternalLinkIcon } from "lucide-react";
 import { BookmarkActions } from "@/components/bookmark-actions";
-import { BookmarkRow } from "@/components/bookmark-row";
+import { BookmarkRow, bookmarkListClass } from "@/components/bookmark-row";
+import { RowRibbon } from "@/components/row-ribbon";
 import { AutoRefresh } from "@/components/auto-refresh";
 import { CategoryPicker } from "@/components/category-picker";
 import { TypeIcon } from "@/components/type-icon";
@@ -10,7 +11,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Separator } from "@/components/ui/separator";
 import { getBookmark, listCategoriesWithCounts, relatedBookmarks } from "@/lib/bookmarks";
 import { youtubeId } from "@/lib/extract";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
@@ -42,9 +42,9 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
       </Button>
 
       <div className="mt-4 grid gap-10 lg:grid-cols-[minmax(0,1fr)_16rem]">
-        <div className="min-w-0">
-          <div className="grid grid-cols-[5px_minmax(0,1fr)] gap-4 sm:gap-5">
-            <span aria-hidden className={`rounded-full ${busy ? "ribbon-pending" : ""}`} style={busy ? undefined : { background: color }} />
+        <div className="relative min-w-0 rounded-2xl border border-rule bg-card px-5 pt-7 pb-8 sm:px-10 sm:pt-9 sm:pb-10">
+          <RowRibbon busy={busy} color={color} className="absolute -top-px left-5 h-20 w-4 sm:left-10 sm:h-24 sm:w-5" />
+          <div className="pl-9 sm:pl-11">
             <header>
               <p className="text-sm font-semibold" style={{ color: busy ? "var(--ink-faint)" : color }}>
                 {busy ? "Reading and summarizing…" : (category?.name ?? "Uncategorized")}
@@ -143,7 +143,7 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
           ) : null}
         </div>
 
-        <aside className="flex flex-col gap-8 lg:pt-1">
+        <aside className="flex flex-col gap-8 lg:sticky lg:top-6 lg:self-start lg:pt-2">
           <CategoryPicker
             bookmarkId={b.id}
             categories={categories.map((c) => ({ id: c.id, name: c.name }))}
@@ -170,9 +170,8 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
 
       {related.length ? (
         <section className="mt-16">
-          <Separator className="mb-6" />
           <h2 className="text-lg font-bold tracking-tight">Close in meaning</h2>
-          <ol className="divide-y divide-border">
+          <ol className={`mt-4 ${bookmarkListClass}`}>
             {related.map((item) => (
               <BookmarkRow key={item.id} item={item} />
             ))}

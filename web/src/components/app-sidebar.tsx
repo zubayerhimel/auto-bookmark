@@ -58,7 +58,7 @@ function CategoryMenu({ categories, total, uncategorized }: Props) {
         <SidebarMenuItem key={item.key}>
           <SidebarMenuButton asChild isActive={active === item.key}>
             <Link href={item.href} onClick={close} aria-current={active === item.key ? "page" : undefined}>
-              <span aria-hidden className="h-4 w-1 shrink-0 rounded-full" style={{ background: item.color }} />
+              <span aria-hidden className="ribbon-mark h-4 w-2 shrink-0 [--notch:3px]" style={{ background: item.color }} />
               <span>{item.label}</span>
             </Link>
           </SidebarMenuButton>

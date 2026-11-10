@@ -4,7 +4,6 @@ import { CheckIcon, CircleCheckIcon, CopyIcon, PlugIcon } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "@/components/ui/input-group";
@@ -85,12 +84,13 @@ export function ConnectExtension({ autoConnect }: { autoConnect: boolean }) {
           {phase === "connecting" ? <Spinner data-icon="inline-start" /> : <PlugIcon data-icon="inline-start" />}
           {phase === "connecting" ? "Connecting" : "Connect extension"}
         </Button>
-        <Badge variant={detected ? "secondary" : "outline"}>
+        <span className="inline-flex items-center gap-2 text-sm text-ink-soft">
+          <span aria-hidden className={`size-2 rounded-full ${detected ? "bg-[#1f8a4c]" : "border border-ink-faint"}`} />
           {detected ? "Extension found in this browser" : "Extension not found in this browser yet"}
-        </Badge>
+        </span>
       </div>
       {phase === "manual" && token ? (
-        <Card>
+        <Card className="bg-paper/60 shadow-none">
           <CardHeader>
             <CardTitle>Paste this key into the extension</CardTitle>
             <CardDescription>

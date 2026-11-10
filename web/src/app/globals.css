@@ -173,6 +173,13 @@
   }
 }
 
+/* App shelf (Categories page): ribbon length is the category's share of the largest one (--r, 0..1). */
+.shelf-ribbon {
+  --notch: 10px;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - var(--notch)), 0 100%);
+  height: calc(5.5rem + var(--r) * 9rem);
+}
+
 /* A dashed ribbon marks bookmarks the AI is still reading. */
 .ribbon-pending {
   background: repeating-linear-gradient(180deg, var(--ink-faint) 0 6px, transparent 6px 10px);
@@ -197,6 +204,10 @@
   .ribbon[data-fresh] {
     animation-duration: 0.9s;
     animation-delay: 1.1s;
+  }
+  .shelf-ribbon {
+    animation: ribbon-drop 0.55s var(--ease-out) both;
+    animation-delay: calc(var(--i) * 40ms);
   }
   .ribbon-caption {
     animation: caption-in 0.4s var(--ease-out) 1.7s both;

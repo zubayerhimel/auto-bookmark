@@ -6,12 +6,11 @@ import type { BookmarkType } from "@/db/schema";
 import { BookmarkPlusIcon, CircleAlertIcon, PuzzleIcon, RotateCwIcon } from "lucide-react";
 import { AddLinkForm } from "@/components/add-link-form";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { BookmarkRow } from "@/components/bookmark-row";
+import { BookmarkRow, bookmarkListClass } from "@/components/bookmark-row";
 import { SearchPanel } from "@/components/search-panel";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Separator } from "@/components/ui/separator";
 import { retryFailedAction } from "@/lib/actions";
 import { listBookmarks, PAGE_SIZE } from "@/lib/bookmarks";
 import { requireUser } from "@/lib/session";
@@ -71,43 +70,43 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
     <div className="mx-auto max-w-4xl">
       <AutoRefresh active={busy} />
       <SearchPanel initialQuery={one(params.q) ?? ""}>
-        <header className="mt-8 flex flex-col gap-4 sm:mt-10 md:flex-row md:items-start md:justify-between">
-          <div className="min-w-0">
-            <h1 className="flex items-center gap-3 text-2xl font-bold tracking-tight">
-              {category ? (
-                <span aria-hidden className="h-6 w-1.5 shrink-0 rounded-full" style={{ background: category.color }} />
-              ) : null}
-              <span className="min-w-0 break-words">{heading}</span>
-            </h1>
-            {category?.description ? (
-              <p className="mt-1 max-w-[60ch] text-sm text-muted-foreground">{category.description}</p>
+        <header className="mt-10 flex flex-col gap-5 sm:mt-12 md:flex-row md:items-end md:justify-between">
+          <div className="flex min-w-0 items-start gap-4">
+            {category ? (
+              <span aria-hidden className="ribbon-mark mt-1 h-12 w-3.5 shrink-0" style={{ background: category.color }} />
             ) : null}
+            <div className="min-w-0">
+              <h1 className="text-[clamp(1.75rem,3.6vw,2.25rem)] leading-tight font-bold tracking-tight break-words">
+                {heading}
+              </h1>
+              {category?.description ? (
+                <p className="mt-1.5 max-w-[60ch] text-ink-soft">{category.description}</p>
+              ) : null}
+            </div>
           </div>
-          <div className="w-full md:max-w-sm">
+          <div className="w-full shrink-0 md:max-w-sm">
             <AddLinkForm />
           </div>
         </header>
 
-        <nav aria-label="Filter by kind" className="-mx-4 mt-3 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <ul className="flex w-max gap-1">
+        <nav aria-label="Filter by kind" className="-mx-4 mt-4 overflow-x-auto border-b border-rule px-4 sm:mx-0 sm:px-0">
+          <ul className="flex w-max gap-6">
             {TYPES.map((t) => {
               const current = (type ?? "all") === t.key;
               return (
                 <li key={t.key}>
-                  <Button asChild variant={current ? "secondary" : "ghost"} size="sm">
-                    <Link
-                      href={qs({ type: t.key === "all" ? undefined : t.key, before: undefined })}
-                      aria-current={current ? "page" : undefined}
-                    >
-                      {t.label}
-                    </Link>
-                  </Button>
+                  <Link
+                    href={qs({ type: t.key === "all" ? undefined : t.key, before: undefined })}
+                    aria-current={current ? "page" : undefined}
+                    className="-mb-px inline-flex h-10 items-center border-b-2 border-transparent text-sm font-medium text-ink-faint transition-colors duration-150 ease-out hover:text-ink aria-[current=page]:border-ink aria-[current=page]:text-ink"
+                  >
+                    {t.label}
+                  </Link>
                 </li>
               );
             })}
           </ul>
         </nav>
-        <Separator className="mt-3" />
 
         {failed > 0 ? (
           <Alert variant="destructive" className="mt-4">
@@ -136,7 +135,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
               </EmptyHeader>
             </Empty>
           ) : (
-            <Empty className="mt-6 border">
+            <Empty className="mt-6 border border-dashed bg-card">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <BookmarkPlusIcon />
@@ -158,7 +157,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
             </Empty>
           )
         ) : (
-          <ol className="divide-y divide-border">
+          <ol className={`mt-5 ${bookmarkListClass}`}>
             {items.map((item) => (
               <BookmarkRow key={item.id} item={item} />
             ))}

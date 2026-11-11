@@ -5,7 +5,6 @@ import { db, schema } from "@/db";
 import type { BookmarkType } from "@/db/schema";
 import { BookmarkPlusIcon, CheckCheckIcon, CircleAlertIcon, PuzzleIcon, RotateCwIcon } from "lucide-react";
 import { AddLinkForm } from "@/components/add-link-form";
-import { AutoRefresh } from "@/components/auto-refresh";
 import { BookmarkRow, bookmarkListClass } from "@/components/bookmark-row";
 import { SearchPanel } from "@/components/search-panel";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -52,7 +51,6 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
     unread,
     before,
   });
-  const busy = items.some((i) => i.status === "pending" || i.status === "processing");
   const failed = items.filter((i) => i.status === "failed").length;
 
   const heading =
@@ -72,7 +70,6 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
 
   return (
     <div className="mx-auto max-w-4xl">
-      <AutoRefresh active={busy} />
       <SearchPanel initialQuery={one(params.q) ?? ""}>
         <header className="mt-10 flex flex-col gap-5 sm:mt-12 md:flex-row md:items-end md:justify-between">
           <div className="flex min-w-0 items-start gap-4">

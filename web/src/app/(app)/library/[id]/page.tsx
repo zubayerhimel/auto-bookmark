@@ -4,7 +4,6 @@ import { ArrowLeftIcon, ChevronRightIcon, CircleAlertIcon, ExternalLinkIcon } fr
 import { BookmarkActions } from "@/components/bookmark-actions";
 import { BookmarkRow, bookmarkListClass } from "@/components/bookmark-row";
 import { RowRibbon } from "@/components/row-ribbon";
-import { AutoRefresh } from "@/components/auto-refresh";
 import { CategoryPicker } from "@/components/category-picker";
 import { TypeIcon } from "@/components/type-icon";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -28,12 +27,12 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
   ]);
 
   const busy = b.status === "pending" || b.status === "processing";
+  const filing = b.status === "ready" && !b.categoryId && !b.categoryLocked;
   const videoId = b.type === "youtube" ? youtubeId(b.url) : null;
   const color = category?.color ?? "var(--rule)";
 
   return (
     <article className="mx-auto max-w-5xl">
-      <AutoRefresh active={busy} />
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/library">
           <ArrowLeftIcon data-icon="inline-start" />
@@ -43,11 +42,15 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
 
       <div className="mt-4 grid gap-10 lg:grid-cols-[minmax(0,1fr)_16rem]">
         <div className="relative min-w-0 rounded-2xl border border-rule bg-card px-5 pt-7 pb-8 sm:px-10 sm:pt-9 sm:pb-10">
-          <RowRibbon busy={busy} color={color} className="absolute -top-px left-5 h-20 w-4 sm:left-10 sm:h-24 sm:w-5" />
+          <RowRibbon busy={busy || filing} color={color} className="absolute -top-px left-5 h-20 w-4 sm:left-10 sm:h-24 sm:w-5" />
           <div className="pl-9 sm:pl-11">
             <header>
-              <p className="text-sm font-semibold" style={{ color: busy ? "var(--ink-faint)" : color }}>
-                {busy ? "Reading and summarizing…" : (category?.name ?? "Uncategorized")}
+              <p className="text-sm font-semibold" style={{ color: busy || filing ? "var(--ink-faint)" : color }}>
+                {busy
+                  ? "Reading and summarizing…"
+                  : filing
+                    ? "Choosing a category…"
+                    : (category?.name ?? "Uncategorized")}
               </p>
               <h1 className="mt-1 text-[clamp(1.6rem,3.5vw,var(--text-3xl))] leading-tight font-bold tracking-tight text-pretty break-words">
                 {b.title || hostOf(b.url)}

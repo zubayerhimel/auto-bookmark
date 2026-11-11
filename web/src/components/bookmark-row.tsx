@@ -31,6 +31,7 @@ export function BookmarkRow({
   showUnread?: boolean;
 }) {
   const busy = item.status === "pending" || item.status === "processing";
+  const filing = item.status === "ready" && !item.categoryId && !item.categoryLocked;
   const failed = item.status === "failed";
   const color = failed ? "var(--danger)" : (item.categoryColor ?? "var(--rule)");
   const title = item.title || hostOf(item.url);
@@ -43,19 +44,21 @@ export function BookmarkRow({
       {/* The ribbon sits a little tucked under the top edge and pulls down on hover. */}
       <span aria-hidden className="pointer-events-none absolute -top-px left-4 h-11 w-2.5 overflow-hidden sm:left-5">
         <RowRibbon
-          busy={busy}
+          busy={busy || filing}
           color={color}
           className="h-full w-full -translate-y-1.5 transition-[translate] duration-200 ease-out group-hover:translate-y-0 motion-reduce:transition-none"
         />
       </span>
       <div className="flex gap-5 py-4 pr-4 pl-10 sm:pr-4 sm:pl-12">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold" style={{ color: busy ? "var(--ink-faint)" : color }}>
+          <p className="text-xs font-semibold" style={{ color: busy || filing ? "var(--ink-faint)" : color }}>
             {busy
               ? "Reading and summarizing…"
               : failed
                 ? "Couldn't process this one"
-                : (item.categoryName ?? "Uncategorized")}
+                : filing
+                  ? "Choosing a category…"
+                  : (item.categoryName ?? "Uncategorized")}
           </p>
           <h3 className="mt-1 text-[1.0625rem] leading-snug font-semibold text-pretty break-words">
             <Link

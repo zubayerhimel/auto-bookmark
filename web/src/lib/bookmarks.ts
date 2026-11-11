@@ -114,6 +114,7 @@ export const listFields = {
   error: schema.bookmark.error,
   createdAt: schema.bookmark.createdAt,
   readAt: schema.bookmark.readAt,
+  categoryLocked: schema.bookmark.categoryLocked,
   categoryId: schema.category.id,
   categoryName: schema.category.name,
   categorySlug: schema.category.slug,
@@ -135,6 +136,7 @@ export type BookmarkListItem = {
   error: string | null;
   createdAt: Date;
   readAt: Date | null;
+  categoryLocked: boolean;
   categoryId: string | null;
   categoryName: string | null;
   categorySlug: string | null;
@@ -263,6 +265,8 @@ export async function libraryStats(userId: string) {
       total: sql<number>`count(*)::int`,
       uncategorized: sql<number>`count(*) filter (where ${schema.bookmark.categoryId} is null)::int`,
       busy: sql<number>`count(*) filter (where ${schema.bookmark.status} in ('pending','processing'))::int`,
+      // Ready but not yet filed: the AI is choosing a category (e.g. after their category was deleted).
+      filing: sql<number>`count(*) filter (where ${schema.bookmark.status} = 'ready' and ${schema.bookmark.categoryId} is null and not ${schema.bookmark.categoryLocked})::int`,
       unread: sql<number>`count(*) filter (where ${schema.bookmark.readAt} is null)::int`,
     })
     .from(schema.bookmark)

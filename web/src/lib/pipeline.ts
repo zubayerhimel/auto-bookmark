@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { analyzeContent, classifyItem, embedText } from "./ai";
 import { findOrCreateCategory, listCategoryHints, pruneEmptyAiCategories } from "./categories";
@@ -220,6 +220,12 @@ export async function recategorizeBookmarks(userId: string, ids: string[]) {
           .where(eq(schema.bookmark.id, item.id));
       } catch (err) {
         console.error(`[recategorize] ${item.id}`, err);
+        // Leave it in Uncategorized for the user to place, instead of "still filing" forever.
+        await db
+          .update(schema.bookmark)
+          .set({ categoryLocked: true })
+          .where(and(eq(schema.bookmark.id, item.id), isNull(schema.bookmark.categoryId)))
+          .catch(() => {});
       }
     });
   }

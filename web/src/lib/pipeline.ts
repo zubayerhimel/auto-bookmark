@@ -150,8 +150,8 @@ export function processBookmarks(ids: string[]) {
 }
 
 /**
- * Re-files every bookmark the user hasn't pinned by hand, using the current category list.
- * Handy after creating or describing categories yourself.
+ * Re-files every bookmark the user hasn't pinned by hand. The user's own categories are kept, but
+ * AI-made ones are rebuilt from scratch so an over-broad category can't keep absorbing everything.
  */
 export async function recategorizeAll(userId: string) {
   const items = await db
@@ -171,14 +171,18 @@ export async function recategorizeAll(userId: string) {
       ),
     );
 
+  const chosenThisRun = new Set<string>();
   await Promise.all(
     items.map((item) =>
       limit(async () => {
         try {
           // Re-read so categories created earlier in this run are offered to later items.
-          const categories = await listCategoryHints(userId);
+          const categories = (await listCategoryHints(userId)).filter(
+            (c) => c.source === "user" || chosenThisRun.has(c.id),
+          );
           const choice = await classifyItem(item, categories);
           const category = await findOrCreateCategory(userId, choice, "ai");
+          chosenThisRun.add(category.id);
           await db
             .update(schema.bookmark)
             .set({ categoryId: category.id })

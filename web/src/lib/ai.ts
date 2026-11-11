@@ -83,12 +83,42 @@ function describeCategories(categories: CategoryHint[]) {
 }
 
 const CATEGORY_RULES = `Category rules:
-- Reuse an existing category whenever the item reasonably fits it. Use its exact name.
-- Only invent a new category when none of the existing ones fit. New categories should be broad,
-  reusable topics of 1–3 words in Title Case (e.g. "Technology", "Personal Finance", "Cooking",
-  "Machine Learning", "Design"), never one-off labels tied to a single item.
-- Do not use format words such as "Video", "Tweet" or "Article" as a category.
-- Give a one-sentence description of what belongs in the category.`;
+- File by subject matter: what the item is about, not where it was posted or what format it is.
+- First decide the item's topic, then find the closest existing category and judge honestly whether
+  the item belongs there. Reuse it only if someone browsing that category would clearly expect to
+  find this item there. A loose or technical link (the page is a web app, the post mentions a
+  computer) is not enough. A category with no description means exactly what its name says.
+- If no existing category is a clear fit, create a new one. Many focused categories are better
+  than a few catch-alls, so never force an item into a poor fit.
+- New categories are mid-level topics of 1–3 words in Title Case, specific enough to group related
+  items yet reusable for future ones, e.g. "Web Development", "AI Tools", "Football", "Cars",
+  "Personal Finance", "Cooking", "Deals & Giveaways", "Productivity". Prefer the plain, everyday name
+  for the subject area ("Football" rather than "Sports Personal Brands", "Cars" rather than
+  "Automotive Marketing"). Never one-off labels tied to a single item, and never umbrella buckets
+  like "Technology", "General", "Entertainment", "Miscellaneous", "Other" or "Interesting".
+- Do not use format words such as "Video", "Tweet", "Post" or "Article" as a new category.
+- The description is one sentence naming the specific kinds of things that belong in the category,
+  narrow enough that unrelated items would clearly not fit.`;
+
+const categoryDecision = {
+  topic: z
+    .string()
+    .describe(
+      "In a few words, the specific subject of the item, e.g. 'React image cropping library' or 'Cristiano Ronaldo's career'.",
+    ),
+  closestExisting: z
+    .string()
+    .nullable()
+    .describe("The existing category closest to the topic, or null if there are no categories yet."),
+  closestFits: z
+    .boolean()
+    .describe(
+      "True only if the topic squarely belongs in closestExisting as its name and description define it. False if it is merely adjacent (e.g. both involve software or the internet).",
+    ),
+  category: z
+    .object({ name: z.string(), description: z.string() })
+    .describe("closestExisting (exact name) when closestFits is true, otherwise a new category."),
+};
 
 const analysisSchema = z.object({
   title: z.string().describe("A clear, human readable title for the item (max ~90 chars)."),
@@ -99,10 +129,7 @@ const analysisSchema = z.object({
   tags: z
     .array(z.string())
     .describe("3–8 lowercase topical tags: specific names, technologies, people, concepts."),
-  category: z.object({
-    name: z.string(),
-    description: z.string(),
-  }),
+  ...categoryDecision,
 });
 
 export type Analysis = z.infer<typeof analysisSchema>;
@@ -151,9 +178,7 @@ ${describeCategories(categories)}`,
   return output;
 }
 
-const classificationSchema = z.object({
-  category: z.object({ name: z.string(), description: z.string() }),
-});
+const classificationSchema = z.object(categoryDecision);
 
 export async function classifyItem(
   item: { title: string | null; summary: string | null; tags: string[]; url: string },

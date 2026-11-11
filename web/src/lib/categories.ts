@@ -43,7 +43,12 @@ function colorFor(slug: string) {
 
 export async function listCategoryHints(userId: string) {
   return db
-    .select({ id: schema.category.id, name: schema.category.name, description: schema.category.description })
+    .select({
+      id: schema.category.id,
+      name: schema.category.name,
+      description: schema.category.description,
+      source: schema.category.source,
+    })
     .from(schema.category)
     .where(eq(schema.category.userId, userId))
     .orderBy(schema.category.name);

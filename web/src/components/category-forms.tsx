@@ -88,7 +88,7 @@ export function RefileButton() {
         {pending ? "Starting" : "Re-file library with AI"}
       </Button>
       <p aria-live="polite" className="text-xs text-muted-foreground">
-        {state?.message ?? "Sorts every bookmark again using your current categories."}
+        {state?.message ?? "Sorts every bookmark again. Your own categories stay; AI-made ones are rebuilt."}
       </p>
     </form>
   );

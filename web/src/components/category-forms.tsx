@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { libraryHref } from "@/lib/search-params";
 import {
   createCategoryAction,
   deleteCategoryAction,
@@ -163,7 +164,7 @@ export function CategoryItem({ category, others }: { category: Cat; others: { id
           <>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
               <Link
-                href={`/library?category=${category.slug}`}
+                href={libraryHref("/library", { category: category.slug })}
                 className="inline-flex items-center gap-2.5 rounded-sm text-lg font-semibold transition-colors duration-150 ease-out hover:text-action"
               >
                 <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ background: category.color }} />

@@ -1,8 +1,11 @@
 import { redirect } from "next/navigation";
+import { createLoader, parseAsString, type SearchParams } from "nuqs/server";
 import { Landing } from "@/components/landing";
 import { getUserId } from "@/lib/session";
 
-function safeNext(value: string | string[] | undefined) {
+const loadParams = createLoader({ next: parseAsString });
+
+function safeNext(value: string | null) {
   return typeof value === "string" && value.startsWith("/") && !value.startsWith("//") && !value.startsWith("/\\")
     ? value
     : "/library";
@@ -11,10 +14,9 @@ function safeNext(value: string | string[] | undefined) {
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  searchParams: Promise<SearchParams>;
 }) {
-  const params = await searchParams;
-  const next = safeNext(params.next);
+  const next = safeNext((await loadParams(searchParams)).next);
   if (await getUserId()) redirect(next);
 
   return <Landing next={next} />;

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { createLoader, parseAsString, type SearchParams } from "nuqs/server";
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { ConnectExtension } from "@/components/connect-extension";
@@ -8,13 +9,15 @@ import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Browser extension" };
 
+const loadParams = createLoader({ connect: parseAsString });
+
 export default async function ExtensionPage({
   searchParams,
 }: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
+  searchParams: Promise<SearchParams>;
 }) {
   const user = await requireUser();
-  const { connect } = await searchParams;
+  const { connect } = await loadParams(searchParams);
   const tokens = await db
     .select()
     .from(schema.apiToken)

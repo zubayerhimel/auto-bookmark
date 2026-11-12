@@ -16,6 +16,7 @@ import { getBookmark, listCategoriesWithCounts, relatedBookmarks, type BookmarkL
 import { youtubeId } from "@/lib/extract";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
 import { requireUser } from "@/lib/session";
+import { libraryHref } from "@/lib/search-params";
 
 const loadBookmark = cache(getBookmark);
 
@@ -169,7 +170,7 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
                 {b.tags.map((t) => (
                   <li key={t}>
                     <Badge asChild variant="secondary">
-                      <Link href={`/library?q=${encodeURIComponent(t)}`}>#{t}</Link>
+                      <Link href={libraryHref("/library", { q: t })}>#{t}</Link>
                     </Badge>
                   </li>
                 ))}

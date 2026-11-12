@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
+import { useQueryStates } from "nuqs";
 import { Suspense } from "react";
 import { BookOpenIcon, LibraryIcon, PuzzleIcon, TagsIcon } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
@@ -23,6 +24,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { libraryHref, libraryParams } from "@/lib/search-params";
 
 type Cat = { id: string; name: string; slug: string; color: string; count: number };
 type Props = { categories: Cat[]; total: number; uncategorized: number; unread: number };
@@ -36,11 +38,10 @@ function useCloseOnNavigate() {
 
 function useActiveKey() {
   const pathname = usePathname();
-  const params = useSearchParams();
+  const [{ category, view }] = useQueryStates({ category: libraryParams.category, view: libraryParams.view });
   if (pathname !== "/library") return null;
-  const category = params.get("category");
   if (category) return category;
-  return params.get("view") === "unread" ? "unread" : "all";
+  return view === "unread" ? "unread" : "all";
 }
 
 function ViewMenu({ total, unread }: Pick<Props, "total" | "unread">) {
@@ -48,7 +49,7 @@ function ViewMenu({ total, unread }: Pick<Props, "total" | "unread">) {
   const close = useCloseOnNavigate();
   const items = [
     { key: "all", href: "/library", label: "All bookmarks", count: total, Icon: LibraryIcon },
-    { key: "unread", href: "/library?view=unread", label: "To read", count: unread, Icon: BookOpenIcon },
+    { key: "unread", href: libraryHref("/library", { view: "unread" }), label: "To read", count: unread, Icon: BookOpenIcon },
   ];
   return (
     <SidebarMenu>
@@ -74,13 +75,13 @@ function CategoryMenu({ categories, uncategorized }: Props) {
   const items = [
     ...categories.map((c) => ({
       key: c.slug,
-      href: `/library?category=${c.slug}`,
+      href: libraryHref("/library", { category: c.slug }),
       label: c.name,
       count: c.count,
       color: c.color,
     })),
     ...(uncategorized > 0
-      ? [{ key: "uncategorized", href: "/library?category=uncategorized", label: "Uncategorized", count: uncategorized, color: "var(--rule)" }]
+      ? [{ key: "uncategorized", href: libraryHref("/library", { category: "uncategorized" }), label: "Uncategorized", count: uncategorized, color: "var(--rule)" }]
       : []),
   ];
 

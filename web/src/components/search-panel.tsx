@@ -1,6 +1,7 @@
 "use client";
 
 import { CircleAlertIcon, CornerDownLeftIcon, SearchIcon, SearchXIcon, XIcon } from "lucide-react";
+import { useQueryState } from "nuqs";
 import { useEffect, useRef, useState } from "react";
 import type { BookmarkListItem } from "@/lib/bookmarks";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -10,6 +11,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { AskAnswer } from "./ask-answer";
+import { libraryParams } from "@/lib/search-params";
 import { BookmarkRow, bookmarkListClass } from "./bookmark-row";
 
 type Result = {
@@ -43,8 +45,9 @@ function describe(u: NonNullable<Result["understood"]>) {
   return parts.join(" ");
 }
 
-export function SearchPanel({ initialQuery, children }: { initialQuery: string; children: React.ReactNode }) {
-  const [query, setQuery] = useState(initialQuery);
+export function SearchPanel({ children }: { children: React.ReactNode }) {
+  // Kept in the address bar as ?q= so a search survives reloads and can be shared.
+  const [query, setQuery] = useQueryState("q", libraryParams.q);
   const [answer, setAnswer] = useState<{ q: string; data: Result | null; error: string | null } | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const trimmed = query.trim();
@@ -61,11 +64,6 @@ export function SearchPanel({ initialQuery, children }: { initialQuery: string; 
   };
 
   useEffect(() => {
-    const url = new URL(window.location.href);
-    if (trimmed) url.searchParams.set("q", trimmed);
-    else url.searchParams.delete("q");
-    window.history.replaceState(window.history.state, "", url);
-
     if (trimmed.length < 2) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {

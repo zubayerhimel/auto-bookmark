@@ -1,6 +1,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/ui/themes";
 import type { Metadata, Viewport } from "next";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Inter, Literata } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
@@ -64,7 +65,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             signUpFallbackRedirectUrl="/library"
             appearance={{ theme: shadcn, variables: { colorInput: "var(--card)" } }}
           >
-            <TooltipProvider>{children}</TooltipProvider>
+            <NuqsAdapter>
+              <TooltipProvider>{children}</TooltipProvider>
+            </NuqsAdapter>
             <Toaster position="top-center" />
           </ClerkProvider>
         </ThemeProvider>

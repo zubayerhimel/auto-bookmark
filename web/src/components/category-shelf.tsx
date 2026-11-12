@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties } from "react";
+import { libraryHref } from "@/lib/search-params";
 
 type Cat = { id: string; name: string; slug: string; color: string; count: number };
 
@@ -35,7 +36,7 @@ export function CategoryShelf({ categories, moreHref }: { categories: Cat[]; mor
           {shown.map((c, i) => (
             <li key={c.id} className={TIERS.find((_, t) => i < visible[t])?.showFrom}>
               <Link
-                href={`/library?category=${c.slug}`}
+                href={libraryHref("/library", { category: c.slug })}
                 title={`${c.name}: ${c.count} ${c.count === 1 ? "bookmark" : "bookmarks"}`}
                 className="shelf-ribbon flex w-11 -translate-y-1.5 flex-col items-center justify-between py-5 text-white transition-[translate] duration-200 ease-out hover:translate-y-0 focus-visible:translate-y-0 focus-visible:outline-none focus-visible:[&>span:first-child]:underline motion-reduce:transition-none"
                 style={

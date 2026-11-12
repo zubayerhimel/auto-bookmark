@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { SearchParams } from "nuqs/server";
 import type { BookmarkType } from "@/db/schema";
 import { BookmarkPlusIcon, CheckCheckIcon, CircleAlertIcon, PuzzleIcon, RotateCwIcon } from "lucide-react";
 import { AddLinkForm } from "@/components/add-link-form";
@@ -11,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { markAllReadAction, retryFailedAction } from "@/lib/actions";
 import { getCategoryBySlug, listBookmarks, PAGE_SIZE } from "@/lib/bookmarks";
+import { libraryHref, loadLibraryParams } from "@/lib/search-params";
 import { requireUser } from "@/lib/session";
 
 const TYPES: { key: BookmarkType | "all"; label: string }[] = [
@@ -20,29 +22,24 @@ const TYPES: { key: BookmarkType | "all"; label: string }[] = [
   { key: "youtube", label: "Videos" },
 ];
 
-type Search = Record<string, string | string[] | undefined>;
-const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+type PageProps = { searchParams: Promise<SearchParams> };
 
-export async function generateMetadata({ searchParams }: { searchParams: Promise<Search> }): Promise<Metadata> {
-  const params = await searchParams;
-  const slug = one(params.category);
+export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
+  const { category: slug, view } = await loadLibraryParams(searchParams);
   if (slug === "uncategorized") return { title: "Uncategorized" };
-  if (one(params.view) === "unread") return { title: "To read" };
+  if (view === "unread") return { title: "To read" };
   if (!slug) return { title: "Library" };
   const user = await requireUser();
   const category = await getCategoryBySlug(user.id, slug);
   return { title: category?.name ?? "Library" };
 }
 
-export default async function LibraryPage({ searchParams }: { searchParams: Promise<Search> }) {
+export default async function LibraryPage({ searchParams }: PageProps) {
   const user = await requireUser();
-  const params = await searchParams;
-  const slug = one(params.category);
-  const typeParam = one(params.type);
-  const type = TYPES.some((t) => t.key === typeParam && t.key !== "all") ? (typeParam as BookmarkType) : undefined;
-  const unread = one(params.view) === "unread";
-  const beforeParam = one(params.before);
-  const before = beforeParam && !Number.isNaN(Date.parse(beforeParam)) ? new Date(beforeParam) : undefined;
+  const { category: slug, type: typeParam, view, before: beforeParam } = await loadLibraryParams(searchParams);
+  const type = typeParam ?? undefined;
+  const unread = view === "unread";
+  const before = beforeParam ?? undefined;
 
   const categorySlug = slug && slug !== "uncategorized" ? slug : undefined;
   const [category, items] = await Promise.all([
@@ -60,22 +57,12 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
 
   const heading =
     category?.name ?? (slug === "uncategorized" ? "Uncategorized" : unread ? "To read" : "All bookmarks");
-  const qs = (patch: Record<string, string | undefined>) => {
-    const next = new URLSearchParams();
-    if (slug) next.set("category", slug);
-    if (type) next.set("type", type);
-    if (unread) next.set("view", "unread");
-    for (const [k, v] of Object.entries(patch)) {
-      if (v) next.set(k, v);
-      else next.delete(k);
-    }
-    const s = next.toString();
-    return s ? `/library?${s}` : "/library";
-  };
+  const qs = (patch: Parameters<typeof libraryHref>[1]) =>
+    libraryHref("/library", { category: slug, type: typeParam, view, ...patch });
 
   return (
     <div className="mx-auto max-w-4xl">
-      <SearchPanel initialQuery={one(params.q) ?? ""}>
+      <SearchPanel>
         <header className="mt-10 flex flex-col gap-5 sm:mt-12 md:flex-row md:items-end md:justify-between">
           <div className="flex min-w-0 items-start gap-4">
             {category ? (
@@ -106,7 +93,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
               return (
                 <li key={t.key}>
                   <Link
-                    href={qs({ type: t.key === "all" ? undefined : t.key, before: undefined })}
+                    href={qs({ type: t.key === "all" ? null : t.key, before: null })}
                     aria-current={current ? "page" : undefined}
                     className="inline-flex h-10 items-center border-b-2 border-transparent text-sm font-medium text-ink-faint transition-colors duration-150 ease-out hover:text-ink aria-[current=page]:border-ink aria-[current=page]:text-ink"
                   >
@@ -117,7 +104,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
             })}
             <li className="ml-auto pl-6">
               <Link
-                href={qs({ view: unread ? undefined : "unread", before: undefined })}
+                href={qs({ view: unread ? null : "unread", before: null })}
                 data-on={unread}
                 className="group/toread inline-flex h-10 items-center gap-2 border-b-2 border-transparent text-sm font-medium text-ink-faint transition-colors duration-150 ease-out hover:text-ink data-[on=true]:border-action data-[on=true]:text-action"
               >
@@ -209,7 +196,7 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
 
         {items.length === PAGE_SIZE ? (
           <Button asChild variant="outline" className="mt-6">
-            <Link href={qs({ before: items[items.length - 1].createdAt.toISOString() })}>Show older bookmarks</Link>
+            <Link href={qs({ before: items[items.length - 1].createdAt })}>Show older bookmarks</Link>
           </Button>
         ) : null}
       </SearchPanel>

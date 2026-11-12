@@ -1,7 +1,10 @@
 import { after, NextResponse } from "next/server";
+import { createLoader, parseAsString } from "nuqs/server";
 import { bookmarkJson, findBookmarkByUrl, parseSaveInput, saveBookmark } from "@/lib/bookmarks";
 import { processBookmarks } from "@/lib/pipeline";
 import { getRequestUserId } from "@/lib/session";
+
+const loadParams = createLoader({ url: parseAsString });
 
 export const maxDuration = 300;
 
@@ -32,7 +35,7 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const userId = await getRequestUserId(req);
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const url = new URL(req.url).searchParams.get("url");
+  const { url } = loadParams(req);
   if (!url) return NextResponse.json({ error: "A url is required." }, { status: 400 });
   const row = await findBookmarkByUrl(userId, url);
   return NextResponse.json({ bookmark: row ? bookmarkJson(row) : null });

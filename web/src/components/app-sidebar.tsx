@@ -22,6 +22,7 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type Cat = { id: string; name: string; slug: string; color: string; count: number };
 type Props = { categories: Cat[]; total: number; uncategorized: number; unread: number };
@@ -169,8 +170,11 @@ export function AppSidebar(props: Props) {
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
-        <div className="flex min-h-10 items-center px-2 pt-1">
-          <UserButton showName />
+        <div className="flex min-h-10 items-center gap-2 px-2 pt-1">
+          <div className="min-w-0 flex-1">
+            <UserButton showName />
+          </div>
+          <ThemeToggle />
         </div>
       </SidebarFooter>
     </Sidebar>

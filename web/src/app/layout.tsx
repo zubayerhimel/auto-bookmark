@@ -2,6 +2,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/ui/themes";
 import type { Metadata, Viewport } from "next";
 import { Inter, Literata } from "next/font/google";
+import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
@@ -47,21 +48,26 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#e9edf1",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#e9edf1" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e1217" },
+  ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={cn("antialiased", inter.variable, literata.variable)}>
+    <html lang="en" className={cn("antialiased", inter.variable, literata.variable)} suppressHydrationWarning>
       <body className="min-h-dvh">
-        <ClerkProvider
-          signInFallbackRedirectUrl="/library"
-          signUpFallbackRedirectUrl="/library"
-          appearance={{ theme: shadcn, variables: { colorInput: "var(--card)" } }}
-        >
-          <TooltipProvider>{children}</TooltipProvider>
-          <Toaster position="top-center" />
-        </ClerkProvider>
+        <ThemeProvider>
+          <ClerkProvider
+            signInFallbackRedirectUrl="/library"
+            signUpFallbackRedirectUrl="/library"
+            appearance={{ theme: shadcn, variables: { colorInput: "var(--card)" } }}
+          >
+            <TooltipProvider>{children}</TooltipProvider>
+            <Toaster position="top-center" />
+          </ClerkProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

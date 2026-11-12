@@ -4,9 +4,9 @@ import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, ChevronRightIcon, CircleAlertIcon, ExternalLinkIcon } from "lucide-react";
 import { BookmarkActions } from "@/components/bookmark-actions";
-import { BookmarkRow, bookmarkListClass } from "@/components/bookmark-row";
 import { RowRibbon } from "@/components/row-ribbon";
 import { CategoryPicker } from "@/components/category-picker";
+import { RelatedShelf } from "@/components/related-shelf";
 import { TypeIcon } from "@/components/type-icon";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -54,7 +54,7 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
           <RowRibbon busy={busy || filing} color={color} className="absolute -top-px left-5 h-20 w-4 sm:left-10 sm:h-24 sm:w-5" />
           <div className="pl-9 sm:pl-11">
             <header>
-              <p className="text-sm font-semibold" style={{ color: busy || filing ? "var(--ink-faint)" : color }}>
+              <p className="category-label text-sm font-semibold" style={{ "--label": busy || filing ? "var(--ink-faint)" : color } as React.CSSProperties}>
                 {busy
                   ? "Reading and summarizing…"
                   : filing
@@ -82,7 +82,7 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
           </div>
 
           {videoId ? (
-            <div className="mt-8 aspect-video overflow-hidden rounded-xl bg-ink">
+            <div className="mt-8 aspect-video overflow-hidden rounded-xl bg-ink dark:bg-black">
               <iframe
                 src={`https://www.youtube-nocookie.com/embed/${videoId}`}
                 title={b.title ?? "YouTube video"}
@@ -191,13 +191,18 @@ async function RelatedSection({ related }: { related: Promise<BookmarkListItem[]
   const items = await related;
   if (!items.length) return null;
   return (
-    <section className="mt-16">
-      <h2 className="text-lg font-bold tracking-tight">Close in meaning</h2>
-      <ol className={`mt-4 ${bookmarkListClass}`}>
-        {items.map((item) => (
-          <BookmarkRow key={item.id} item={item} />
-        ))}
-      </ol>
+    <section className="mt-14">
+      <RelatedShelf
+        items={items.map(({ id, url, title, type, siteName, categoryName, categoryColor }) => ({
+          id,
+          url,
+          title,
+          type,
+          siteName,
+          categoryName,
+          categoryColor,
+        }))}
+      />
     </section>
   );
 }

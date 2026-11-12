@@ -91,7 +91,7 @@ function withCitations(text: string, byN: Map<number, Source>) {
         key={m.index}
         href={`/library/${source.id}`}
         title={source.title}
-        className="mx-px inline-flex h-[1.15rem] min-w-[1.15rem] -translate-y-px items-center justify-center rounded-[5px] bg-action/10 px-1 align-middle font-sans text-[0.7rem] font-semibold text-action tabular-nums transition-colors duration-150 ease-out hover:bg-action hover:text-white focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+        className="mx-px inline-flex h-[1.15rem] min-w-[1.15rem] -translate-y-px items-center justify-center rounded-[5px] bg-action/10 px-1 align-middle font-sans text-[0.7rem] font-semibold text-action tabular-nums transition-colors duration-150 ease-out hover:bg-action hover:text-action-foreground focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
       >
         <span className="sr-only">Source </span>
         {source.n}

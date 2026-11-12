@@ -51,7 +51,7 @@ export function BookmarkRow({
       </span>
       <div className="flex gap-5 py-4 pr-4 pl-10 sm:pr-4 sm:pl-12">
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-semibold" style={{ color: busy || filing ? "var(--ink-faint)" : color }}>
+          <p className="category-label text-xs font-semibold" style={{ "--label": busy || filing ? "var(--ink-faint)" : color } as React.CSSProperties}>
             {busy
               ? "Reading and summarizing…"
               : failed

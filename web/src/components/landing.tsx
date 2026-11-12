@@ -1,5 +1,6 @@
 import type { CSSProperties } from "react";
 import { SignInButton, SignUpButton } from "@clerk/nextjs";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { BookmarkIcon, CheckIcon, FileText, MessageSquareText, MonitorPlay, SearchIcon } from "lucide-react";
 import { Highlight } from "@/components/highlight";
 import { LogoMark } from "@/components/logo";
@@ -147,7 +148,7 @@ function SearchDemo() {
                 <li key={r.title} className="grid grid-cols-[4px_minmax(0,1fr)] gap-3 py-4 first:pt-0 sm:gap-4">
                   <span className="rounded-full" style={{ background: r.color }} aria-hidden />
                   <div className="min-w-0">
-                    <p className="text-xs font-semibold" style={{ color: r.color }}>
+                    <p className="category-label text-xs font-semibold" style={{ "--label": r.color } as React.CSSProperties}>
                       {r.category}
                     </p>
                     <p className="mt-0.5 text-[1.05rem] leading-snug font-semibold">
@@ -250,6 +251,7 @@ export function Landing({ next }: { next: string }) {
             <LogoMark className="size-7" />
             Auto Bookmark
           </span>
+          <ThemeToggle className="ml-auto" />
         </header>
 
         <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">

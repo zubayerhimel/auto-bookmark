@@ -62,7 +62,7 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
                     ? "Choosing a category…"
                     : (category?.name ?? "Uncategorized")}
               </p>
-              <h1 className="mt-1 text-[clamp(1.6rem,3.5vw,var(--text-3xl))] leading-tight font-bold tracking-tight text-pretty break-words">
+              <h1 className="mt-1 text-[clamp(1.6rem,3.5vw,var(--text-3xl))] leading-tight font-semibold tracking-tight text-pretty break-words">
                 {b.title || hostOf(b.url)}
               </h1>
               <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
@@ -98,7 +98,7 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
           ) : null}
 
           {b.type === "tweet" && b.content ? (
-            <blockquote className="mt-8 border-l-2 pl-4 font-serif text-[1.0625rem] leading-relaxed break-words whitespace-pre-line sm:pl-5 sm:text-lg">
+            <blockquote className="mt-8 border-l-2 pl-4 text-base leading-[1.65] text-pretty break-words whitespace-pre-line sm:pl-5 sm:text-[1.0625rem]">
               {b.content.slice(0, 4000)}
             </blockquote>
           ) : null}
@@ -114,14 +114,14 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
           {b.summary ? (
             <section className="mt-10">
               <h2 className="text-sm font-semibold text-muted-foreground">Summary</h2>
-              <p className="mt-2 max-w-[65ch] font-serif text-[1.0625rem] leading-[1.7] sm:text-lg">{b.summary}</p>
+              <p className="mt-2.5 max-w-[65ch] text-base leading-[1.7] text-pretty sm:text-[1.0625rem]">{b.summary}</p>
             </section>
           ) : null}
 
           {b.keyPoints?.length ? (
             <section className="mt-8">
               <h2 className="text-sm font-semibold text-muted-foreground">Key points</h2>
-              <ul className="mt-2 max-w-[65ch] flex list-disc flex-col gap-1.5 pl-5 font-serif leading-relaxed marker:text-muted-foreground">
+              <ul className="mt-2.5 flex max-w-[65ch] list-disc flex-col gap-2 pl-5 leading-[1.65] text-pretty marker:text-ink-faint">
                 {b.keyPoints.map((p) => (
                   <li key={p}>{p}</li>
                 ))}
@@ -132,7 +132,7 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
           {b.note ? (
             <section className="mt-8">
               <h2 className="text-sm font-semibold text-muted-foreground">What you highlighted</h2>
-              <p className="mt-2 max-w-[65ch] font-serif leading-relaxed">
+              <p className="mt-2.5 max-w-[65ch] leading-[1.65]">
                 <mark>{b.note}</mark>
               </p>
             </section>
@@ -147,7 +147,7 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
                 </Button>
               </CollapsibleTrigger>
               <CollapsibleContent>
-                <p className="mt-3 font-serif text-sm leading-relaxed break-words whitespace-pre-line text-muted-foreground">
+                <p className="mt-3 text-sm leading-[1.65] break-words whitespace-pre-line text-muted-foreground">
                   {b.content.slice(0, 6000)}
                   {b.content.length > 6000 ? "…" : ""}
                 </p>

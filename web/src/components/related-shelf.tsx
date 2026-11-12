@@ -59,7 +59,7 @@ export function RelatedShelf({ items }: { items: Item[] }) {
   return (
     <Carousel opts={{ align: "start" }} aria-labelledby="related-heading">
       <div className="flex items-center justify-between gap-4">
-        <h2 id="related-heading" className="text-lg font-bold tracking-tight">
+        <h2 id="related-heading" className="text-lg font-semibold tracking-tight">
           Close in meaning
         </h2>
         <Arrows />

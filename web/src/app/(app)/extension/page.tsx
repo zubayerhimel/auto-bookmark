@@ -48,7 +48,7 @@ export default async function ExtensionPage({
 
   return (
     <div className="mx-auto max-w-3xl">
-      <h1 className="text-[clamp(1.75rem,3.6vw,2.25rem)] leading-tight font-bold tracking-tight">Browser extension</h1>
+      <h1 className="text-[clamp(1.75rem,3.6vw,2.25rem)] leading-tight font-semibold tracking-tight">Browser extension</h1>
       <p className="mt-2 max-w-[60ch] text-ink-soft">
         Click the toolbar button on any page, post or video and it&apos;s saved to this account, summarized and filed.
         On X, Instagram and Facebook each post gets its own save button, and right-clicking a link saves it without
@@ -56,7 +56,7 @@ export default async function ExtensionPage({
       </p>
 
       <section aria-labelledby="install" className="mt-10 rounded-2xl border border-rule bg-card p-5 sm:p-8">
-        <h2 id="install" className="text-lg font-bold tracking-tight">
+        <h2 id="install" className="text-lg font-semibold tracking-tight">
           Install it in Chrome, Edge, Brave or Arc
         </h2>
         <ol className="mt-6 flex flex-col">
@@ -81,7 +81,7 @@ export default async function ExtensionPage({
       </section>
 
       <section aria-labelledby="browsers" className="mt-12">
-        <h2 id="browsers" className="text-lg font-bold tracking-tight">
+        <h2 id="browsers" className="text-lg font-semibold tracking-tight">
           Connected browsers
         </h2>
         {tokens.length === 0 ? (

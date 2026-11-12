@@ -65,7 +65,7 @@ export default async function LibraryPage({ searchParams }: PageProps) {
               <span aria-hidden className="ribbon-mark mt-1 h-12 w-3.5 shrink-0" style={{ background: category.color }} />
             ) : null}
             <div className="min-w-0">
-              <h1 className="text-[clamp(1.75rem,3.6vw,2.25rem)] leading-tight font-bold tracking-tight break-words">
+              <h1 className="text-[clamp(1.75rem,3.6vw,2.25rem)] leading-tight font-semibold tracking-tight break-words">
                 {heading}
               </h1>
               {category?.description ? (

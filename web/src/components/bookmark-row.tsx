@@ -71,7 +71,7 @@ export function BookmarkRow({
           {failed && item.error ? (
             <p className="mt-1 line-clamp-2 text-sm text-destructive">{item.error}</p>
           ) : blurb ? (
-            <p className="mt-1.5 line-clamp-2 max-w-[68ch] font-serif text-[0.92rem] leading-relaxed text-ink-soft">
+            <p className="mt-1 line-clamp-2 max-w-[68ch] text-sm leading-[1.55] text-ink-soft">
               <Highlight text={blurb} terms={terms} />
             </p>
           ) : null}

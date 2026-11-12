@@ -2,22 +2,18 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/ui/themes";
 import type { Metadata, Viewport } from "next";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import { Inter, Literata } from "next/font/google";
+import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
+// The opsz axis lets headings pick up Inter's tighter display cut while body text keeps the open text cut.
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
-});
-
-const literata = Literata({
-  variable: "--font-literata",
-  subsets: ["latin"],
-  style: ["normal", "italic"],
+  axes: ["opsz"],
 });
 
 const description =
@@ -57,7 +53,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={cn("antialiased", inter.variable, literata.variable)} suppressHydrationWarning>
+    <html lang="en" className={cn("antialiased", inter.variable)} suppressHydrationWarning>
       <body className="min-h-dvh">
         <ThemeProvider>
           <ClerkProvider

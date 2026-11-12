@@ -39,7 +39,7 @@ export default async function CategoriesPage() {
         </Empty>
       ) : (
         <>
-        <h2 id="all-categories" className="mt-12 scroll-mt-6 text-lg font-bold tracking-tight">Your categories</h2>
+        <h2 id="all-categories" className="mt-12 scroll-mt-6 text-lg font-semibold tracking-tight">Your categories</h2>
         <p className="mt-1 text-sm text-ink-faint">Empty categories the AI created are removed on their own.</p>
         <ul className="mt-4 flex flex-col gap-2.5">
           {categories.map((c) => (

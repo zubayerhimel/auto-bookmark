@@ -103,8 +103,9 @@
   --color-highlight: var(--highlight);
   --color-danger: var(--danger);
   --font-sans: var(--font-inter), system-ui, sans-serif;
-  --font-serif: var(--font-literata), Georgia, serif;
   --font-heading: var(--font-inter), system-ui, sans-serif;
+  /* Inter's opsz axis already tightens large sizes, so headings need less negative tracking than usual. */
+  --tracking-tight: -0.012em;
 
   /* 1.2 modular scale from a 15px base */
   --text-xs: 0.8125rem;

@@ -125,7 +125,7 @@ function SearchDemo() {
         <figure aria-label="Example search" className="mt-10 sm:mt-14">
           <div className="flex items-start gap-3 border-b-2 border-ink pb-4 sm:gap-5 sm:pb-6">
             <SearchIcon className="mt-1.5 size-5 shrink-0 text-ink-faint sm:mt-3 sm:size-7" aria-hidden />
-            <p className="font-serif text-[1.35rem] leading-snug text-balance sm:text-[2.1rem] sm:leading-[1.25]">
+            <p className="text-[1.35rem] leading-snug font-medium tracking-[-0.01em] text-balance sm:text-[2.1rem] sm:leading-[1.2] sm:tracking-[-0.012em]">
               {query}
             </p>
           </div>
@@ -154,7 +154,7 @@ function SearchDemo() {
                     <p className="mt-0.5 text-[1.05rem] leading-snug font-semibold">
                       <Highlight text={r.title} terms={r.hits} />
                     </p>
-                    <p className="mt-1 max-w-[68ch] font-serif text-[0.92rem] leading-relaxed text-ink-soft">
+                    <p className="mt-1 max-w-[68ch] text-sm leading-[1.55] text-ink-soft">
                       <Highlight text={r.summary} terms={r.hits} />
                     </p>
                     <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-ink-soft">
@@ -259,7 +259,7 @@ export function Landing({ next }: { next: string }) {
         </div>
 
         <section className="pt-10 pb-16 sm:pt-14 lg:col-start-1 lg:row-start-2 lg:self-center lg:pt-0 lg:pb-24">
-          <h1 className="text-[clamp(2.6rem,7.4vw,4.6rem)] leading-[0.98] font-extrabold tracking-[-0.045em] text-balance">
+          <h1 className="text-[clamp(2.6rem,7.4vw,4.6rem)] leading-[0.98] font-extrabold tracking-[-0.035em] text-balance">
             Save anything once. Find it by describing it.
           </h1>
           <p className="mt-6 max-w-[36rem] text-base leading-relaxed text-ink-soft sm:text-lg">

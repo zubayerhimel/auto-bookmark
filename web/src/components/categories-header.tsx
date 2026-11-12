@@ -5,7 +5,7 @@ import { CreateCategoryForm, RefileButton } from "@/components/category-forms";
 export function CategoriesIntro() {
   return (
     <>
-      <h1 className="text-[clamp(1.75rem,3.6vw,2.25rem)] leading-tight font-bold tracking-tight">Categories</h1>
+      <h1 className="text-[clamp(1.75rem,3.6vw,2.25rem)] leading-tight font-semibold tracking-tight">Categories</h1>
       <p className="mt-2 max-w-[60ch] text-ink-soft">
         The AI files each new bookmark under the closest category and starts a new one when nothing fits. Add your own
         with a short description, then re-file the library to move matching bookmarks into them.

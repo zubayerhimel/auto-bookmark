@@ -109,7 +109,7 @@ function AnswerBody({ text, byN }: { text: string; byN: Map<number, Source> }) {
     .map((b) => b.trim())
     .filter(Boolean);
   return (
-    <div className="flex max-w-[65ch] flex-col gap-3 font-serif text-[1.0625rem] leading-[1.7]">
+    <div className="flex max-w-[65ch] flex-col gap-3 text-base leading-[1.7] text-pretty sm:text-[1.0625rem]">
       {blocks.map((block, i) => {
         const lines = block.split("\n");
         if (lines.every((l) => /^\s*[-*•]\s/.test(l))) {
@@ -173,7 +173,7 @@ export function AskAnswer({ question }: { question: string }) {
             <AlertDescription>{error}</AlertDescription>
           </Alert>
         ) : sources !== null && sources.length === 0 ? (
-          <p className="font-serif text-[1.0625rem] leading-[1.7] text-ink-soft">
+          <p className="text-base leading-[1.7] text-ink-soft sm:text-[1.0625rem]">
             Nothing you&apos;ve saved covers that yet. Save a page about it and ask again.
           </p>
         ) : text ? (

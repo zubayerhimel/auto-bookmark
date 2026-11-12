@@ -228,10 +228,28 @@ export function bookmarkJson({ bookmark: b, category }: NonNullable<Awaited<Retu
   };
 }
 
+/**
+ * Cosine distances for "Close in meaning", calibrated on text-embedding-3-small: unrelated
+ * bookmarks sit around 0.6–0.8 apart, so nearness alone only counts when it is strong. A
+ * moderate match also needs a shared category or a shared specific tag.
+ */
+const RELATED_ON_ITS_OWN = 0.55;
+const RELATED_WITH_SHARED_TOPIC = 0.66;
+/** Tags that name a platform rather than a topic, so sharing one says nothing. */
+const PLATFORM_TAGS = ["x", "twitter", "tweet", "youtube", "video", "instagram", "facebook", "reddit", "article", "blog"];
+
+/** Only bookmarks that are truly about the same thing, closest first; often fewer than `limit`, sometimes none. */
 export async function relatedBookmarks(userId: string, id: string, limit = 5) {
   if (!isUuid(id)) return [];
-  // The source embedding is read in the same statement, so this is one round trip to the database.
-  const source = sql`(select s.embedding from bookmark s where s.id = ${id} and s.user_id = ${userId})`;
+  // The source is read in the same statement, so this is one round trip to the database.
+  const source = (column: SQL) => sql`(select ${column} from bookmark s where s.id = ${id} and s.user_id = ${userId})`;
+  const distance = sql`(${schema.bookmark.embedding} <=> ${source(sql`s.embedding`)})`;
+  const sameCategory = sql`coalesce(${schema.bookmark.categoryId} = ${source(sql`s.category_id`)}, false)`;
+  const sharedTag = sql`exists (
+    select 1 from unnest(${schema.bookmark.tags}) t
+    where lower(t) in ${source(sql`lower(unnest(s.tags))`)}
+      and lower(t) not in (${sql.join(PLATFORM_TAGS.map((t) => sql`${t}`), sql`, `)})
+  )`;
   return db
     .select(listFields)
     .from(schema.bookmark)
@@ -241,10 +259,10 @@ export async function relatedBookmarks(userId: string, id: string, limit = 5) {
         eq(schema.bookmark.userId, userId),
         ne(schema.bookmark.id, id),
         sql`${schema.bookmark.embedding} is not null`,
-        sql`${source} is not null`,
+        sql`(${distance} <= ${RELATED_ON_ITS_OWN} or (${distance} <= ${RELATED_WITH_SHARED_TOPIC} and (${sameCategory} or ${sharedTag})))`,
       ),
     )
-    .orderBy(sql`${schema.bookmark.embedding} <=> ${source}`)
+    .orderBy(distance)
     .limit(limit);
 }
 

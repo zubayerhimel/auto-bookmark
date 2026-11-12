@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense } from "react";
-import { BookmarkIcon, BookOpenIcon, LibraryIcon, PuzzleIcon, TagsIcon } from "lucide-react";
+import { BookOpenIcon, LibraryIcon, PuzzleIcon, TagsIcon } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
+import { LogoMark } from "@/components/logo";
 import {
   Sidebar,
   SidebarContent,
@@ -122,9 +123,7 @@ export function AppSidebar(props: Props) {
           <SidebarMenuItem>
             <SidebarMenuButton asChild size="lg">
               <Link href="/library" onClick={close}>
-                <span className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <BookmarkIcon />
-                </span>
+                <LogoMark />
                 <span className="text-base font-bold tracking-tight">Auto Bookmark</span>
               </Link>
             </SidebarMenuButton>

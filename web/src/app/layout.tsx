@@ -18,9 +18,30 @@ const literata = Literata({
   style: ["normal", "italic"],
 });
 
+const description =
+  "Save pages, posts on X and YouTube videos in one click. AI summarizes and files them; find them again by describing them.";
+
 export const metadata: Metadata = {
-  title: "Auto Bookmark",
-  description: "Save pages, posts on X and YouTube videos in one click. AI summarizes and files them; find them again by describing them.",
+  metadataBase: new URL("https://auto-bookmark.vercel.app"),
+  title: { default: "Auto Bookmark", template: "%s · Auto Bookmark" },
+  description,
+  applicationName: "Auto Bookmark",
+  keywords: ["bookmarks", "bookmark manager", "AI", "read later", "YouTube", "X", "Chrome extension", "semantic search"],
+  openGraph: {
+    type: "website",
+    siteName: "Auto Bookmark",
+    title: "Auto Bookmark: save anything once, find it by describing it",
+    description,
+    url: "/",
+    locale: "en_US",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Auto Bookmark: save anything once, find it by describing it",
+    description,
+  },
+  appleWebApp: { title: "Auto Bookmark", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {

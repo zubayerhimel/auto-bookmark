@@ -1,9 +1,12 @@
+import type { Metadata } from "next";
 import { desc, eq } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { ConnectExtension } from "@/components/connect-extension";
 import { RevokeTokenButton } from "@/components/revoke-token-button";
 import { timeAgo } from "@/lib/format";
 import { requireUser } from "@/lib/session";
+
+export const metadata: Metadata = { title: "Browser extension" };
 
 export default async function ExtensionPage({
   searchParams,

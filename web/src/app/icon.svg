@@ -1,0 +1,1 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><clipPath id="tile"><rect width="64" height="64" rx="14"/></clipPath></defs><rect width="64" height="64" rx="14" fill="#1B2430"/><g clip-path="url(#tile)"><path d="M10 0h12v30l-6-5-6 5z" fill="#6F8FF5"/><path d="M26 0h12v46l-6-5-6 5z" fill="#F5D547"/><path d="M42 0h12v38l-6-5-6 5z" fill="#4FC2B0"/></g></svg>

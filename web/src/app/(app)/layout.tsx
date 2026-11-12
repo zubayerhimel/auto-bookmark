@@ -1,12 +1,18 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { UserButton } from "@clerk/nextjs";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { LogoMark } from "@/components/logo";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { libraryStats, listCategoriesWithCounts } from "@/lib/bookmarks";
 import { requireUser } from "@/lib/session";
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
@@ -26,7 +32,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur md:static md:h-12 md:rounded-t-xl md:border-none md:bg-transparent md:backdrop-blur-none">
           <SidebarTrigger />
           <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4 md:hidden" />
-          <Link href="/library" className="font-bold tracking-tight md:hidden">
+          <Link href="/library" className="inline-flex items-center gap-2 font-bold tracking-tight md:hidden">
+            <LogoMark className="size-6" />
             Auto Bookmark
           </Link>
           <div className="ml-auto flex items-center md:hidden">

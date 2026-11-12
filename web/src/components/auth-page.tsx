@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { LogoMark } from "@/components/logo";
 
 export function AuthPage({ children }: { children: React.ReactNode }) {
   return (
     <main className="mx-auto flex min-h-dvh max-w-6xl flex-col px-4 py-6 sm:px-8 sm:py-8">
       <header>
-        <Link href="/" className="text-lg font-bold tracking-tight">
+        <Link href="/" className="inline-flex items-center gap-2 text-lg font-bold tracking-tight">
+          <LogoMark className="size-7" />
           Auto Bookmark
         </Link>
       </header>

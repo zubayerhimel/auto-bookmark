@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { SignIn } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
@@ -15,6 +16,8 @@ function safeRedirect(value: string | string[] | undefined) {
     return "/library";
   }
 }
+
+export const metadata: Metadata = { title: "Sign in" };
 
 export default async function SignInPage({
   searchParams,

@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { SignInButton, SignUpButton } from "@clerk/nextjs";
 import { BookmarkIcon, CheckIcon, FileText, MessageSquareText, MonitorPlay, SearchIcon } from "lucide-react";
 import { Highlight } from "@/components/highlight";
+import { LogoMark } from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 
@@ -246,7 +247,7 @@ export function Landing({ next }: { next: string }) {
       <div className="mx-auto grid max-w-6xl grid-cols-1 px-5 sm:px-8 lg:min-h-[42rem] lg:grid-cols-[minmax(0,1fr)_auto] lg:gap-x-16">
         <header className="flex h-16 items-center lg:col-start-1 lg:row-start-1 lg:h-20">
           <span className="inline-flex items-center gap-2 text-lg font-bold tracking-tight">
-            <span aria-hidden className="ribbon-mark h-5 w-3 bg-action" />
+            <LogoMark className="size-7" />
             Auto Bookmark
           </span>
         </header>

@@ -1,4 +1,6 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, ChevronRightIcon, CircleAlertIcon, ExternalLinkIcon } from "lucide-react";
 import { BookmarkActions } from "@/components/bookmark-actions";
@@ -15,10 +17,18 @@ import { youtubeId } from "@/lib/extract";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
 import { requireUser } from "@/lib/session";
 
+const loadBookmark = cache(getBookmark);
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const user = await requireUser();
+  const row = await loadBookmark(user.id, (await params).id);
+  return { title: row?.bookmark.title || "Bookmark" };
+}
+
 export default async function BookmarkPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   const { id } = await params;
-  const row = await getBookmark(user.id, id);
+  const row = await loadBookmark(user.id, id);
   if (!row) notFound();
   const { bookmark: b, category } = row;
   const [categories, related] = await Promise.all([

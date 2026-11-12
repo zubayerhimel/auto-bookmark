@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { and, eq } from "drizzle-orm";
@@ -23,6 +24,21 @@ const TYPES: { key: BookmarkType | "all"; label: string }[] = [
 
 type Search = Record<string, string | string[] | undefined>;
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<Search> }): Promise<Metadata> {
+  const params = await searchParams;
+  const slug = one(params.category);
+  if (slug === "uncategorized") return { title: "Uncategorized" };
+  if (one(params.view) === "unread") return { title: "To read" };
+  if (!slug) return { title: "Library" };
+  const user = await requireUser();
+  const [category] = await db
+    .select({ name: schema.category.name })
+    .from(schema.category)
+    .where(and(eq(schema.category.userId, user.id), eq(schema.category.slug, slug)))
+    .limit(1);
+  return { title: category?.name ?? "Library" };
+}
 
 export default async function LibraryPage({ searchParams }: { searchParams: Promise<Search> }) {
   const user = await requireUser();

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { TagsIcon } from "lucide-react";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -5,6 +6,8 @@ import { CategoryItem, CreateCategoryForm, RefileButton } from "@/components/cat
 import { CategoryShelf } from "@/components/category-shelf";
 import { listCategoriesWithCounts } from "@/lib/bookmarks";
 import { requireUser } from "@/lib/session";
+
+export const metadata: Metadata = { title: "Categories" };
 
 export default async function CategoriesPage() {
   const user = await requireUser();

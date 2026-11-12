@@ -5,13 +5,13 @@ import type { SearchParams } from "nuqs/server";
 import type { BookmarkType } from "@/db/schema";
 import { BookmarkPlusIcon, CheckCheckIcon, CircleAlertIcon, PuzzleIcon, RotateCwIcon } from "lucide-react";
 import { AddLinkForm } from "@/components/add-link-form";
-import { BookmarkRow, bookmarkListClass } from "@/components/bookmark-row";
+import { BookmarkFeed } from "@/components/bookmark-feed";
 import { SearchPanel } from "@/components/search-panel";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { markAllReadAction, retryFailedAction } from "@/lib/actions";
-import { getCategoryBySlug, listBookmarks, PAGE_SIZE } from "@/lib/bookmarks";
+import { getCategoryBySlug, libraryQuery, listBookmarks } from "@/lib/bookmarks";
 import { libraryHref, loadLibraryParams } from "@/lib/search-params";
 import { requireUser } from "@/lib/session";
 
@@ -36,29 +36,24 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
 
 export default async function LibraryPage({ searchParams }: PageProps) {
   const user = await requireUser();
-  const { category: slug, type: typeParam, view, before: beforeParam } = await loadLibraryParams(searchParams);
+  const params = await loadLibraryParams(searchParams);
+  const { category: slug, type: typeParam, view } = params;
   const type = typeParam ?? undefined;
   const unread = view === "unread";
-  const before = beforeParam ?? undefined;
+  const query = libraryQuery(params);
 
-  const categorySlug = slug && slug !== "uncategorized" ? slug : undefined;
-  const [category, items] = await Promise.all([
-    categorySlug ? getCategoryBySlug(user.id, categorySlug) : null,
-    listBookmarks(user.id, {
-      categorySlug,
-      uncategorized: slug === "uncategorized",
-      type,
-      unread,
-      before,
-    }),
+  const [category, { items, nextCursor }] = await Promise.all([
+    query.categorySlug ? getCategoryBySlug(user.id, query.categorySlug) : null,
+    listBookmarks(user.id, query),
   ]);
-  if (categorySlug && !category) notFound();
+  if (query.categorySlug && !category) notFound();
   const failed = items.filter((i) => i.status === "failed").length;
 
   const heading =
     category?.name ?? (slug === "uncategorized" ? "Uncategorized" : unread ? "To read" : "All bookmarks");
   const qs = (patch: Parameters<typeof libraryHref>[1]) =>
     libraryHref("/library", { category: slug, type: typeParam, view, ...patch });
+  const filters = libraryHref({ category: slug, type: typeParam, view });
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -93,7 +88,7 @@ export default async function LibraryPage({ searchParams }: PageProps) {
               return (
                 <li key={t.key}>
                   <Link
-                    href={qs({ type: t.key === "all" ? null : t.key, before: null })}
+                    href={qs({ type: t.key === "all" ? null : t.key })}
                     aria-current={current ? "page" : undefined}
                     className="inline-flex h-10 items-center border-b-2 border-transparent text-sm font-medium text-ink-faint transition-colors duration-150 ease-out hover:text-ink aria-[current=page]:border-ink aria-[current=page]:text-ink"
                   >
@@ -104,7 +99,7 @@ export default async function LibraryPage({ searchParams }: PageProps) {
             })}
             <li className="ml-auto pl-6">
               <Link
-                href={qs({ view: unread ? null : "unread", before: null })}
+                href={qs({ view: unread ? null : "unread" })}
                 data-on={unread}
                 className="group/toread inline-flex h-10 items-center gap-2 border-b-2 border-transparent text-sm font-medium text-ink-faint transition-colors duration-150 ease-out hover:text-ink data-[on=true]:border-action data-[on=true]:text-action"
               >
@@ -147,7 +142,7 @@ export default async function LibraryPage({ searchParams }: PageProps) {
         ) : null}
 
         {items.length === 0 ? (
-          unread && !before ? (
+          unread ? (
             <Empty className="mt-6">
               <EmptyHeader>
                 <EmptyMedia variant="icon">
@@ -157,7 +152,7 @@ export default async function LibraryPage({ searchParams }: PageProps) {
                 <EmptyDescription>New saves land here until you open them.</EmptyDescription>
               </EmptyHeader>
             </Empty>
-          ) : before || type || slug ? (
+          ) : type || slug ? (
             <Empty className="mt-6">
               <EmptyHeader>
                 <EmptyTitle>Nothing here yet</EmptyTitle>
@@ -187,18 +182,14 @@ export default async function LibraryPage({ searchParams }: PageProps) {
             </Empty>
           )
         ) : (
-          <ol className={`mt-5 ${bookmarkListClass}`}>
-            {items.map((item) => (
-              <BookmarkRow key={item.id} item={item} showUnread={!unread} />
-            ))}
-          </ol>
+          <BookmarkFeed
+            key={filters}
+            items={items}
+            nextCursor={nextCursor}
+            filters={filters}
+            showUnread={!unread}
+          />
         )}
-
-        {items.length === PAGE_SIZE ? (
-          <Button asChild variant="outline" className="mt-6">
-            <Link href={qs({ before: items[items.length - 1].createdAt })}>Show older bookmarks</Link>
-          </Button>
-        ) : null}
       </SearchPanel>
     </div>
   );

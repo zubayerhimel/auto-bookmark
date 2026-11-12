@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { and, desc, eq, isNull, lt, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { BookmarkType } from "@/db/schema";
 import { clip, detectType, extractFromHtml, normalizeUrl } from "./extract";
@@ -144,7 +144,39 @@ export type BookmarkListItem = {
   categoryColor: string | null;
 };
 
-export const PAGE_SIZE = 40;
+export const PAGE_SIZE = 30;
+
+export type LibrarySort = "newest" | "oldest" | "title" | "title-desc";
+
+/** What a card shows as its title: the page title, else the site's host. Lowercased so A–Z ignores case. */
+const titleKey = sql`lower(coalesce(nullif(btrim(${schema.bookmark.title}), ''), regexp_replace(split_part(${schema.bookmark.url}, '/', 3), '^www[.]', '')))`;
+
+const SORT_KEYS: Record<LibrarySort, { key: SQL; type: "timestamp" | "text"; descending: boolean }> = {
+  newest: { key: sql`${schema.bookmark.createdAt}`, type: "timestamp", descending: true },
+  oldest: { key: sql`${schema.bookmark.createdAt}`, type: "timestamp", descending: false },
+  title: { key: titleKey, type: "text", descending: false },
+  "title-desc": { key: titleKey, type: "text", descending: true },
+};
+
+/*
+ * Pages continue from a cursor (the last row's sort key and id) rather than an offset, so each page
+ * costs the same however deep you scroll, and new saves arriving meanwhile don't shift what comes next.
+ * The key travels as Postgres' own text form, which keeps microsecond timestamps exact.
+ */
+function encodeCursor(key: string, id: string) {
+  return Buffer.from(JSON.stringify([key, id])).toString("base64url");
+}
+
+function decodeCursor(cursor: string): { key: string; id: string } | null {
+  try {
+    const [key, id] = JSON.parse(Buffer.from(cursor, "base64url").toString());
+    return typeof key === "string" && typeof id === "string" && isUuid(id) ? { key, id } : null;
+  } catch {
+    return null;
+  }
+}
+
+export type BookmarkPage = { items: BookmarkListItem[]; nextCursor: string | null };
 
 export async function listBookmarks(
   userId: string,
@@ -155,9 +187,11 @@ export async function listBookmarks(
     uncategorized?: boolean;
     type?: BookmarkType;
     unread?: boolean;
-    before?: Date;
+    sort?: LibrarySort;
+    /** From a previous page's `nextCursor`. */
+    cursor?: string | null;
   } = {},
-): Promise<BookmarkListItem[]> {
+): Promise<BookmarkPage> {
   const conds: SQL[] = [eq(schema.bookmark.userId, userId)];
   if (opts.categoryId) conds.push(eq(schema.bookmark.categoryId, opts.categoryId));
   if (opts.categorySlug) {
@@ -168,14 +202,43 @@ export async function listBookmarks(
   if (opts.uncategorized) conds.push(isNull(schema.bookmark.categoryId));
   if (opts.type) conds.push(eq(schema.bookmark.type, opts.type));
   if (opts.unread) conds.push(isNull(schema.bookmark.readAt));
-  if (opts.before) conds.push(lt(schema.bookmark.createdAt, opts.before));
-  return db
-    .select(listFields)
+
+  const { key, type, descending } = SORT_KEYS[opts.sort ?? "newest"];
+  if (opts.cursor) {
+    const after = decodeCursor(opts.cursor);
+    if (!after) return { items: [], nextCursor: null };
+    conds.push(
+      sql`(${key}, ${schema.bookmark.id}) ${sql.raw(descending ? "<" : ">")} (${after.key}::${sql.raw(type)}, ${after.id}::uuid)`,
+    );
+  }
+  const dir = descending ? desc : asc;
+  const rows = await db
+    .select({ ...listFields, sortKey: sql<string>`(${key})::text` })
     .from(schema.bookmark)
     .leftJoin(schema.category, eq(schema.category.id, schema.bookmark.categoryId))
     .where(and(...conds))
-    .orderBy(desc(schema.bookmark.createdAt))
-    .limit(PAGE_SIZE);
+    .orderBy(dir(key), dir(schema.bookmark.id))
+    .limit(PAGE_SIZE + 1);
+
+  const page = rows.slice(0, PAGE_SIZE);
+  const last = page.at(-1);
+  const nextCursor = rows.length > PAGE_SIZE && last ? encodeCursor(last.sortKey, last.id) : null;
+  for (const row of page) delete (row as Partial<typeof row>).sortKey;
+  return { items: page, nextCursor };
+}
+
+/** The list query for the library's URL filters. */
+export function libraryQuery(params: {
+  category: string | null;
+  type: BookmarkType | null;
+  view: "unread" | null;
+}) {
+  return {
+    categorySlug: params.category && params.category !== "uncategorized" ? params.category : undefined,
+    uncategorized: params.category === "uncategorized",
+    type: params.type ?? undefined,
+    unread: params.view === "unread",
+  };
 }
 
 const isUuid = (id: string) => /^[0-9a-f-]{36}$/i.test(id);

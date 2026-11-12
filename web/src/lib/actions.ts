@@ -5,9 +5,10 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, isNull, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { saveBookmark } from "./bookmarks";
+import { libraryQuery, listBookmarks, saveBookmark } from "./bookmarks";
 import { findOrCreateCategory, pruneEmptyAiCategories, slugify, tidyName } from "./categories";
 import { processBookmarks, recategorizeAll, recategorizeBookmarks } from "./pipeline";
+import { loadLibraryParams } from "./search-params";
 import { generateToken, hashToken, requireUser } from "./session";
 
 export type ActionState = { ok?: boolean; error?: string; message?: string } | null;
@@ -17,6 +18,13 @@ function refresh() {
 }
 
 // ---------- Bookmarks ----------
+
+/** The next page of the library list. `filters` is the list's query string, e.g. "?category=recipes". */
+export async function loadMoreBookmarksAction(filters: string, cursor: string) {
+  const user = await requireUser();
+  const params = loadLibraryParams(new URLSearchParams(filters));
+  return listBookmarks(user.id, { ...libraryQuery(params), cursor });
+}
 
 export async function addBookmarkAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const user = await requireUser();

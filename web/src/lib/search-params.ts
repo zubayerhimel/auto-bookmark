@@ -1,7 +1,6 @@
 import {
   createLoader,
   createSerializer,
-  parseAsIsoDateTime,
   parseAsString,
   parseAsStringLiteral,
 } from "nuqs/server";
@@ -13,7 +12,6 @@ export const libraryParams = {
   category: parseAsString,
   type: parseAsStringLiteral(BOOKMARK_KINDS),
   view: parseAsStringLiteral(["unread"] as const),
-  before: parseAsIsoDateTime,
   q: parseAsString.withDefault(""),
 };
 

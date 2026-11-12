@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Auto Bookmark",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Save any page, X post or YouTube video in one click. AI summarizes and files it for you.",
   "permissions": [
     "storage",

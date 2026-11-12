@@ -89,8 +89,9 @@ write any of them.
 Right-click a page or link to save it without opening the popup (a notification shows the
 category). Select text first to keep it as a note.
 
-If the app runs somewhere other than `localhost:3000`, set the address in the extension's
-options (right-click the toolbar button, then **Options**), then connect again.
+The extension talks to the deployed app at `https://auto-bookmark.vercel.app` by default. To use a
+local or other deployment, set the address in the extension's options (right-click the toolbar
+button, then **Options**), then connect again. For local development that is `http://localhost:3000`.
 
 ## How it works
 

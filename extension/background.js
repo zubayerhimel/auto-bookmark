@@ -1,4 +1,4 @@
-import { connectUrl, getConfig, normalizeBase } from "./config.js";
+import { connectUrl, DEFAULT_API_BASE, getConfig, LOCAL_API_BASE, normalizeBase } from "./config.js";
 
 const POLL_INTERVAL_MS = 2500;
 const POLL_TIMEOUT_MS = 90_000;
@@ -26,6 +26,11 @@ chrome.runtime.onInstalled.addListener(async (details) => {
   const tabs = await chrome.tabs.query({ url: POST_SITES });
   for (const t of tabs) {
     chrome.scripting.executeScript({ target: { tabId: t.id }, files: ["posts.js"] }).catch(() => {});
+  }
+  if (details.reason === "update") {
+    // Installs from before the app was deployed point at localhost; move them to the live app.
+    const { apiBase } = await chrome.storage.local.get("apiBase");
+    if (apiBase === LOCAL_API_BASE) await chrome.storage.local.set({ apiBase: DEFAULT_API_BASE });
   }
   if (details.reason === "install") {
     const { apiBase } = await getConfig();

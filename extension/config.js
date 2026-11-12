@@ -1,4 +1,6 @@
-export const DEFAULT_API_BASE = "http://localhost:3000";
+export const DEFAULT_API_BASE = "https://auto-bookmark.vercel.app";
+/** The old default, from before the app was deployed. */
+export const LOCAL_API_BASE = "http://localhost:3000";
 
 export async function getConfig() {
   const { apiBase, token } = await chrome.storage.local.get(["apiBase", "token"]);

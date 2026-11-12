@@ -51,15 +51,20 @@ export function BookmarkRow({
       </span>
       <div className="flex gap-5 py-4 pr-4 pl-10 sm:pr-4 sm:pl-12">
         <div className="min-w-0 flex-1">
-          <p className="category-label text-xs font-semibold" style={{ "--label": busy || filing ? "var(--ink-faint)" : color } as React.CSSProperties}>
-            {busy
-              ? "Reading and summarizing…"
-              : failed
-                ? "Couldn't process this one"
-                : filing
-                  ? "Choosing a category…"
-                  : (item.categoryName ?? "Uncategorized")}
-          </p>
+          <div className="flex items-baseline justify-between gap-3">
+            <p className="category-label truncate text-xs font-semibold" style={{ "--label": busy || filing ? "var(--ink-faint)" : color } as React.CSSProperties}>
+              {busy
+                ? "Reading and summarizing…"
+                : failed
+                  ? "Couldn't process this one"
+                  : filing
+                    ? "Choosing a category…"
+                    : (item.categoryName ?? "Uncategorized")}
+            </p>
+            <time dateTime={new Date(item.createdAt).toISOString()} className="shrink-0 text-xs text-ink-faint tabular-nums">
+              {timeAgo(item.createdAt)}
+            </time>
+          </div>
           <h3 className="mt-1 text-[1.0625rem] leading-snug font-semibold text-pretty break-words">
             <IntentLink
               href={`/library/${item.id}`}
@@ -89,7 +94,6 @@ export function BookmarkRow({
                 To read
               </span>
             ) : null}
-            <time dateTime={new Date(item.createdAt).toISOString()}>{timeAgo(item.createdAt)}</time>
             {item.tags.slice(0, 3).map((tag) => (
               <span key={tag}>
                 #<Highlight text={tag} terms={terms} />

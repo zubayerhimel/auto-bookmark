@@ -15,11 +15,17 @@ export default function LibraryLoading() {
           <Skeleton key={i} className="h-4" style={{ width: `${w * 0.25}rem` }} />
         ))}
       </div>
-      <ul className={`mt-6 ${bookmarkListClass}`}>
+      <div className="mt-3 flex h-8 items-center justify-end">
+        <Skeleton className="h-4 w-28" />
+      </div>
+      <ul className={`mt-5 ${bookmarkListClass}`}>
         {Array.from({ length: 6 }, (_, i) => (
           <li key={i} className="flex gap-5 rounded-2xl border border-rule bg-card py-4 pr-4 pl-10 sm:pl-12">
             <div className="min-w-0 flex-1">
-              <Skeleton className="h-3 w-24" />
+              <div className="flex justify-between gap-3">
+                <Skeleton className="h-3 w-24" />
+                <Skeleton className="h-3 w-14" />
+              </div>
               <Skeleton className="mt-2 h-5 w-3/4" />
               <Skeleton className="mt-2.5 h-4 w-full" />
               <Skeleton className="mt-1.5 h-4 w-2/3" />

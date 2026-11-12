@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { cache } from "react";
+import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
 import { ArrowLeftIcon, ChevronRightIcon, CircleAlertIcon, ExternalLinkIcon } from "lucide-react";
 import { BookmarkActions } from "@/components/bookmark-actions";
@@ -12,7 +12,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { getBookmark, listCategoriesWithCounts, relatedBookmarks } from "@/lib/bookmarks";
+import { getBookmark, listCategoriesWithCounts, relatedBookmarks, type BookmarkListItem } from "@/lib/bookmarks";
 import { youtubeId } from "@/lib/extract";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
 import { requireUser } from "@/lib/session";
@@ -28,13 +28,12 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
 export default async function BookmarkPage({ params }: { params: Promise<{ id: string }> }) {
   const user = await requireUser();
   const { id } = await params;
-  const row = await loadBookmark(user.id, id);
+  // Start everything at once; the related list streams in on its own so it never holds up the page.
+  const related = relatedBookmarks(user.id, id);
+  related.catch(() => {}); // Still rejects where it's awaited; this only stops an unhandled rejection if the page bails first.
+  const [row, categories] = await Promise.all([loadBookmark(user.id, id), listCategoriesWithCounts(user.id)]);
   if (!row) notFound();
   const { bookmark: b, category } = row;
-  const [categories, related] = await Promise.all([
-    listCategoriesWithCounts(user.id),
-    relatedBookmarks(user.id, id),
-  ]);
 
   const busy = b.status === "pending" || b.status === "processing";
   const filing = b.status === "ready" && !b.categoryId && !b.categoryLocked;
@@ -181,16 +180,24 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
         </aside>
       </div>
 
-      {related.length ? (
-        <section className="mt-16">
-          <h2 className="text-lg font-bold tracking-tight">Close in meaning</h2>
-          <ol className={`mt-4 ${bookmarkListClass}`}>
-            {related.map((item) => (
-              <BookmarkRow key={item.id} item={item} />
-            ))}
-          </ol>
-        </section>
-      ) : null}
+      <Suspense fallback={null}>
+        <RelatedSection related={related} />
+      </Suspense>
     </article>
+  );
+}
+
+async function RelatedSection({ related }: { related: Promise<BookmarkListItem[]> }) {
+  const items = await related;
+  if (!items.length) return null;
+  return (
+    <section className="mt-16">
+      <h2 className="text-lg font-bold tracking-tight">Close in meaning</h2>
+      <ol className={`mt-4 ${bookmarkListClass}`}>
+        {items.map((item) => (
+          <BookmarkRow key={item.id} item={item} />
+        ))}
+      </ol>
+    </section>
   );
 }

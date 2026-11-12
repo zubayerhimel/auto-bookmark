@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { and, desc, eq, isNull, lt, ne, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { BookmarkType } from "@/db/schema";
@@ -149,6 +150,8 @@ export async function listBookmarks(
   userId: string,
   opts: {
     categoryId?: string | null;
+    /** Filter by category slug without a separate lookup first, so it can run alongside one. */
+    categorySlug?: string;
     uncategorized?: boolean;
     type?: BookmarkType;
     unread?: boolean;
@@ -157,6 +160,11 @@ export async function listBookmarks(
 ): Promise<BookmarkListItem[]> {
   const conds: SQL[] = [eq(schema.bookmark.userId, userId)];
   if (opts.categoryId) conds.push(eq(schema.bookmark.categoryId, opts.categoryId));
+  if (opts.categorySlug) {
+    conds.push(
+      sql`${schema.bookmark.categoryId} = (select c.id from category c where c.user_id = ${userId} and c.slug = ${opts.categorySlug})`,
+    );
+  }
   if (opts.uncategorized) conds.push(isNull(schema.bookmark.categoryId));
   if (opts.type) conds.push(eq(schema.bookmark.type, opts.type));
   if (opts.unread) conds.push(isNull(schema.bookmark.readAt));
@@ -170,8 +178,10 @@ export async function listBookmarks(
     .limit(PAGE_SIZE);
 }
 
+const isUuid = (id: string) => /^[0-9a-f-]{36}$/i.test(id);
+
 export async function getBookmark(userId: string, id: string) {
-  if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
+  if (!isUuid(id)) return null;
   const [row] = await db
     .select({
       bookmark: schema.bookmark,
@@ -219,13 +229,9 @@ export function bookmarkJson({ bookmark: b, category }: NonNullable<Awaited<Retu
 }
 
 export async function relatedBookmarks(userId: string, id: string, limit = 5) {
-  const [source] = await db
-    .select({ embedding: schema.bookmark.embedding })
-    .from(schema.bookmark)
-    .where(and(eq(schema.bookmark.id, id), eq(schema.bookmark.userId, userId)))
-    .limit(1);
-  if (!source?.embedding) return [];
-  const vec = JSON.stringify(source.embedding);
+  if (!isUuid(id)) return [];
+  // The source embedding is read in the same statement, so this is one round trip to the database.
+  const source = sql`(select s.embedding from bookmark s where s.id = ${id} and s.user_id = ${userId})`;
   return db
     .select(listFields)
     .from(schema.bookmark)
@@ -235,13 +241,15 @@ export async function relatedBookmarks(userId: string, id: string, limit = 5) {
         eq(schema.bookmark.userId, userId),
         ne(schema.bookmark.id, id),
         sql`${schema.bookmark.embedding} is not null`,
+        sql`${source} is not null`,
       ),
     )
-    .orderBy(sql`${schema.bookmark.embedding} <=> ${vec}::vector`)
+    .orderBy(sql`${schema.bookmark.embedding} <=> ${source}`)
     .limit(limit);
 }
 
-export async function listCategoriesWithCounts(userId: string) {
+// cache(): the (app) layout and the page both ask for these, so share one query per request.
+export const listCategoriesWithCounts = cache(async (userId: string) => {
   return db
     .select({
       id: schema.category.id,
@@ -257,9 +265,9 @@ export async function listCategoriesWithCounts(userId: string) {
     .where(eq(schema.category.userId, userId))
     .groupBy(schema.category.id)
     .orderBy(schema.category.name);
-}
+});
 
-export async function libraryStats(userId: string) {
+export const libraryStats = cache(async (userId: string) => {
   const [row] = await db
     .select({
       total: sql<number>`count(*)::int`,
@@ -272,4 +280,14 @@ export async function libraryStats(userId: string) {
     .from(schema.bookmark)
     .where(eq(schema.bookmark.userId, userId));
   return row;
-}
+});
+
+/** Cached so the library page and its metadata share one lookup. */
+export const getCategoryBySlug = cache(async (userId: string, slug: string) => {
+  const [row] = await db
+    .select()
+    .from(schema.category)
+    .where(and(eq(schema.category.userId, userId), eq(schema.category.slug, slug)))
+    .limit(1);
+  return row ?? null;
+});

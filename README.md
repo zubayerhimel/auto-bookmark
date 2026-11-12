@@ -46,6 +46,10 @@ Sign-in uses the Clerk development instance. Its keys live in `web/.env.local`; 
    | `OPENROUTER_API_KEY` | [openrouter.ai/keys](https://openrouter.ai/keys) |
 
    The Vercel Supabase integration's `POSTGRES_URL` is used when `DATABASE_URL` is absent.
+
+   `web/vercel.json` runs the server in `sin1` (Singapore) to sit next to a Supabase project in
+   `ap-southeast-1`. Every query is a round trip to the database, so if your project is elsewhere,
+   change it to the [nearest Vercel region](https://vercel.com/docs/regions).
 5. In Clerk, add your Vercel domain to the production instance's allowed origins if Clerk asks.
 6. In the extension's options, set the app address to your Vercel URL and connect again.
 

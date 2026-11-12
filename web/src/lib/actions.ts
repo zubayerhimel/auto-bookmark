@@ -63,11 +63,13 @@ export async function reprocessBookmarkAction(id: string) {
 /** Puts a bookmark on (or takes it off) the reading list. */
 export async function setBookmarkReadAction(id: string, read: boolean) {
   const user = await requireUser();
-  await ownBookmark(user.id, id);
-  await db
+  // Ownership is checked in the same statement: this runs on every open, so keep it to one query.
+  const updated = await db
     .update(schema.bookmark)
     .set({ readAt: read ? new Date() : null })
-    .where(eq(schema.bookmark.id, id));
+    .where(and(eq(schema.bookmark.id, id), eq(schema.bookmark.userId, user.id)))
+    .returning({ id: schema.bookmark.id });
+  if (!updated.length) throw new Error("Bookmark not found.");
   refresh();
 }
 

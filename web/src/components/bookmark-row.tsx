@@ -1,7 +1,7 @@
-import Link from "next/link";
 import type { BookmarkListItem } from "@/lib/bookmarks";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
 import { Highlight } from "./highlight";
+import { IntentLink } from "./intent-link";
 import { RowRibbon } from "./row-ribbon";
 import { Thumb } from "./thumb";
 import { TypeIcon } from "./type-icon";
@@ -61,12 +61,12 @@ export function BookmarkRow({
                   : (item.categoryName ?? "Uncategorized")}
           </p>
           <h3 className="mt-1 text-[1.0625rem] leading-snug font-semibold text-pretty break-words">
-            <Link
+            <IntentLink
               href={`/library/${item.id}`}
               className="rounded-sm transition-colors duration-150 ease-out after:absolute after:inset-0 after:rounded-2xl after:content-[''] hover:text-action focus-visible:outline-none focus-visible:after:ring-3 focus-visible:after:ring-ring/50"
             >
               <Highlight text={title} terms={terms} />
-            </Link>
+            </IntentLink>
           </h3>
           {failed && item.error ? (
             <p className="mt-1 line-clamp-2 text-sm text-destructive">{item.error}</p>

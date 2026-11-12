@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { and, eq } from "drizzle-orm";
-import { db, schema } from "@/db";
 import type { BookmarkType } from "@/db/schema";
 import { BookmarkPlusIcon, CheckCheckIcon, CircleAlertIcon, PuzzleIcon, RotateCwIcon } from "lucide-react";
 import { AddLinkForm } from "@/components/add-link-form";
@@ -12,7 +10,7 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { markAllReadAction, retryFailedAction } from "@/lib/actions";
-import { listBookmarks, PAGE_SIZE } from "@/lib/bookmarks";
+import { getCategoryBySlug, listBookmarks, PAGE_SIZE } from "@/lib/bookmarks";
 import { requireUser } from "@/lib/session";
 
 const TYPES: { key: BookmarkType | "all"; label: string }[] = [
@@ -32,11 +30,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   if (one(params.view) === "unread") return { title: "To read" };
   if (!slug) return { title: "Library" };
   const user = await requireUser();
-  const [category] = await db
-    .select({ name: schema.category.name })
-    .from(schema.category)
-    .where(and(eq(schema.category.userId, user.id), eq(schema.category.slug, slug)))
-    .limit(1);
+  const category = await getCategoryBySlug(user.id, slug);
   return { title: category?.name ?? "Library" };
 }
 
@@ -50,23 +44,18 @@ export default async function LibraryPage({ searchParams }: { searchParams: Prom
   const beforeParam = one(params.before);
   const before = beforeParam && !Number.isNaN(Date.parse(beforeParam)) ? new Date(beforeParam) : undefined;
 
-  let category: typeof schema.category.$inferSelect | undefined;
-  if (slug && slug !== "uncategorized") {
-    [category] = await db
-      .select()
-      .from(schema.category)
-      .where(and(eq(schema.category.userId, user.id), eq(schema.category.slug, slug)))
-      .limit(1);
-    if (!category) notFound();
-  }
-
-  const items = await listBookmarks(user.id, {
-    categoryId: category?.id,
-    uncategorized: slug === "uncategorized",
-    type,
-    unread,
-    before,
-  });
+  const categorySlug = slug && slug !== "uncategorized" ? slug : undefined;
+  const [category, items] = await Promise.all([
+    categorySlug ? getCategoryBySlug(user.id, categorySlug) : null,
+    listBookmarks(user.id, {
+      categorySlug,
+      uncategorized: slug === "uncategorized",
+      type,
+      unread,
+      before,
+    }),
+  ]);
+  if (categorySlug && !category) notFound();
   const failed = items.filter((i) => i.status === "failed").length;
 
   const heading =

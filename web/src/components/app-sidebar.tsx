@@ -44,12 +44,19 @@ function useActiveKey() {
   return view === "unread" ? "unread" : "all";
 }
 
+/** The chosen order follows you between views, like a reading preference. */
+function useSort() {
+  const [{ sort }] = useQueryStates({ sort: libraryParams.sort });
+  return sort;
+}
+
 function ViewMenu({ total, unread }: Pick<Props, "total" | "unread">) {
   const active = useActiveKey();
   const close = useCloseOnNavigate();
+  const sort = useSort();
   const items = [
-    { key: "all", href: "/library", label: "All bookmarks", count: total, Icon: LibraryIcon },
-    { key: "unread", href: libraryHref("/library", { view: "unread" }), label: "To read", count: unread, Icon: BookOpenIcon },
+    { key: "all", href: libraryHref("/library", { sort }), label: "All bookmarks", count: total, Icon: LibraryIcon },
+    { key: "unread", href: libraryHref("/library", { view: "unread", sort }), label: "To read", count: unread, Icon: BookOpenIcon },
   ];
   return (
     <SidebarMenu>
@@ -71,17 +78,18 @@ function ViewMenu({ total, unread }: Pick<Props, "total" | "unread">) {
 function CategoryMenu({ categories, uncategorized }: Props) {
   const active = useActiveKey();
   const close = useCloseOnNavigate();
+  const sort = useSort();
 
   const items = [
     ...categories.map((c) => ({
       key: c.slug,
-      href: libraryHref("/library", { category: c.slug }),
+      href: libraryHref("/library", { category: c.slug, sort }),
       label: c.name,
       count: c.count,
       color: c.color,
     })),
     ...(uncategorized > 0
-      ? [{ key: "uncategorized", href: libraryHref("/library", { category: "uncategorized" }), label: "Uncategorized", count: uncategorized, color: "var(--rule)" }]
+      ? [{ key: "uncategorized", href: libraryHref("/library", { category: "uncategorized", sort }), label: "Uncategorized", count: uncategorized, color: "var(--rule)" }]
       : []),
   ];
 

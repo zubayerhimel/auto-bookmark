@@ -6,6 +6,7 @@ import type { BookmarkType } from "@/db/schema";
 import { BookmarkPlusIcon, CheckCheckIcon, CircleAlertIcon, PuzzleIcon, RotateCwIcon } from "lucide-react";
 import { AddLinkForm } from "@/components/add-link-form";
 import { BookmarkFeed } from "@/components/bookmark-feed";
+import { SortMenu } from "@/components/sort-menu";
 import { SearchPanel } from "@/components/search-panel";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -37,7 +38,7 @@ export async function generateMetadata({ searchParams }: PageProps): Promise<Met
 export default async function LibraryPage({ searchParams }: PageProps) {
   const user = await requireUser();
   const params = await loadLibraryParams(searchParams);
-  const { category: slug, type: typeParam, view } = params;
+  const { category: slug, type: typeParam, view, sort } = params;
   const type = typeParam ?? undefined;
   const unread = view === "unread";
   const query = libraryQuery(params);
@@ -52,8 +53,8 @@ export default async function LibraryPage({ searchParams }: PageProps) {
   const heading =
     category?.name ?? (slug === "uncategorized" ? "Uncategorized" : unread ? "To read" : "All bookmarks");
   const qs = (patch: Parameters<typeof libraryHref>[1]) =>
-    libraryHref("/library", { category: slug, type: typeParam, view, ...patch });
-  const filters = libraryHref({ category: slug, type: typeParam, view });
+    libraryHref("/library", { category: slug, type: typeParam, view, sort, ...patch });
+  const filters = libraryHref({ category: slug, type: typeParam, view, sort });
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -114,13 +115,18 @@ export default async function LibraryPage({ searchParams }: PageProps) {
           </ul>
         </nav>
 
-        {unread && !slug && !type && items.length > 0 ? (
-          <form action={markAllReadAction} className="mt-3 flex justify-end">
-            <Button type="submit" variant="ghost" size="sm" className="text-ink-soft">
-              <CheckCheckIcon data-icon="inline-start" />
-              Mark all as read
-            </Button>
-          </form>
+        {items.length > 0 ? (
+          <div className="mt-3 flex items-center justify-end gap-2">
+            {unread && !slug && !type ? (
+              <form action={markAllReadAction}>
+                <Button type="submit" variant="ghost" size="sm" className="text-ink-soft">
+                  <CheckCheckIcon data-icon="inline-start" />
+                  Mark all as read
+                </Button>
+              </form>
+            ) : null}
+            <SortMenu />
+          </div>
         ) : null}
 
         {failed > 0 ? (

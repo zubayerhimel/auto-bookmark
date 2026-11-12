@@ -4,6 +4,7 @@ import { and, asc, desc, eq, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { BookmarkType } from "@/db/schema";
 import { clip, detectType, extractFromHtml, normalizeUrl } from "./extract";
+import type { LibrarySort } from "./search-params";
 
 export type SaveInput = {
   url: string;
@@ -146,10 +147,11 @@ export type BookmarkListItem = {
 
 export const PAGE_SIZE = 30;
 
-export type LibrarySort = "newest" | "oldest" | "title" | "title-desc";
-
-/** What a card shows as its title: the page title, else the site's host. Lowercased so A–Z ignores case. */
-const titleKey = sql`lower(coalesce(nullif(btrim(${schema.bookmark.title}), ''), regexp_replace(split_part(${schema.bookmark.url}, '/', 3), '^www[.]', '')))`;
+/**
+ * What a card shows as its title (the page title, else the site's host), lowercased and without
+ * leading punctuation, so "[Draft] Notes" files under N and case doesn't matter.
+ */
+const titleKey = sql`regexp_replace(lower(coalesce(nullif(btrim(${schema.bookmark.title}), ''), regexp_replace(split_part(${schema.bookmark.url}, '/', 3), '^www[.]', ''))), '^[^[:alnum:]]+', '')`;
 
 const SORT_KEYS: Record<LibrarySort, { key: SQL; type: "timestamp" | "text"; descending: boolean }> = {
   newest: { key: sql`${schema.bookmark.createdAt}`, type: "timestamp", descending: true },
@@ -232,8 +234,10 @@ export function libraryQuery(params: {
   category: string | null;
   type: BookmarkType | null;
   view: "unread" | null;
+  sort: LibrarySort;
 }) {
   return {
+    sort: params.sort,
     categorySlug: params.category && params.category !== "uncategorized" ? params.category : undefined,
     uncategorized: params.category === "uncategorized",
     type: params.type ?? undefined,

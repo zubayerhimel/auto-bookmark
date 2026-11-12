@@ -1,9 +1,17 @@
 "use client";
 
-import { ArrowDownUpIcon } from "lucide-react";
+import { ArrowDownUpIcon, ChevronDownIcon } from "lucide-react";
 import { useQueryState } from "nuqs";
 import { useTransition } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Spinner } from "@/components/ui/spinner";
 import { LIBRARY_SORTS, libraryParams, type LibrarySort } from "@/lib/search-params";
 
@@ -23,22 +31,24 @@ export function SortMenu() {
   );
 
   return (
-    <Select value={sort} onValueChange={(value) => void setSort(value as LibrarySort)}>
-      <SelectTrigger
-        size="sm"
-        aria-label="Sort bookmarks"
-        className="border-transparent bg-transparent text-ink-soft shadow-none hover:bg-muted hover:text-ink dark:bg-transparent"
-      >
-        {pending ? <Spinner /> : <ArrowDownUpIcon />}
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent position="popper" align="end">
-        {LIBRARY_SORTS.map((value) => (
-          <SelectItem key={value} value={value}>
-            {LABELS[value]}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="sm" className="text-ink-soft" aria-label={`Sort: ${LABELS[sort]}`}>
+          {pending ? <Spinner data-icon="inline-start" /> : <ArrowDownUpIcon data-icon="inline-start" />}
+          {LABELS[sort]}
+          <ChevronDownIcon data-icon="inline-end" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-40">
+        <DropdownMenuLabel>Sort by</DropdownMenuLabel>
+        <DropdownMenuRadioGroup value={sort} onValueChange={(value) => void setSort(value as LibrarySort)}>
+          {LIBRARY_SORTS.map((value) => (
+            <DropdownMenuRadioItem key={value} value={value}>
+              {LABELS[value]}
+            </DropdownMenuRadioItem>
+          ))}
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

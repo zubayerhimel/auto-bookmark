@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { UserButton } from "@clerk/nextjs";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { CommandPalette, CommandPaletteButton } from "@/components/command-palette";
 import { ResumeProcessing } from "@/components/resume-processing";
 import { LogoMark } from "@/components/logo";
 import { Separator } from "@/components/ui/separator";
@@ -38,12 +39,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <LogoMark className="size-6" />
             Auto Bookmark
           </Link>
-          <div className="ml-auto flex items-center gap-2 md:hidden">
+          <div className="ml-auto flex items-center gap-1 md:hidden">
+            <CommandPaletteButton />
             <UserButton />
           </div>
         </header>
         <div className="flex-1 px-4 pt-4 pb-10 sm:px-8 md:pt-2 lg:px-12">{children}</div>
       </SidebarInset>
+      <CommandPalette categories={categories} />
     </SidebarProvider>
   );
 }

@@ -3,6 +3,8 @@
 Save any web page, post on X, or YouTube video with one click. AI reads it, writes a summary,
 and files it under a category, creating new categories as your interests change. Search your
 library by describing what you remember ("the video about sourdough starters from last spring").
+Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd>+<kbd>K</kbd> on any page (or <kbd>/</kbd> outside the library) to search,
+jump to a category or page, or paste a link to save it.
 
 - `web/`: Next.js 16 app (library, search, categories, API), deployable to Vercel
 - `web/supabase/`: Supabase config for local development

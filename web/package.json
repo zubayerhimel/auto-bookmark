@@ -21,6 +21,7 @@
     "@openrouter/ai-sdk-provider": "^3.1.0",
     "ai": "^7.0.163",
     "class-variance-authority": "^0.7.1",
+    "cmdk": "^1.1.1",
     "cn": "^0.5.2",
     "drizzle-orm": "^0.45.4",
     "embla-carousel-react": "^8.6.0",

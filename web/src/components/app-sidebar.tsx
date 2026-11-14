@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQueryStates } from "nuqs";
 import { Suspense } from "react";
-import { BookOpenIcon, FileUpIcon, LibraryIcon, PuzzleIcon, TagsIcon } from "lucide-react";
+import { BookOpenIcon, FileUpIcon, LibraryIcon, PuzzleIcon, SearchIcon, TagsIcon } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
+import { openCommandPalette, PaletteShortcut } from "@/components/command-palette";
 import { LogoMark } from "@/components/logo";
 import {
   Sidebar,
@@ -136,6 +137,19 @@ export function AppSidebar(props: Props) {
                 <LogoMark />
                 <span className="text-base font-bold tracking-tight">Auto Bookmark</span>
               </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton
+              onClick={() => {
+                close();
+                openCommandPalette();
+              }}
+              className="text-muted-foreground"
+            >
+              <SearchIcon />
+              <span>Search and jump</span>
+              <PaletteShortcut className="ml-auto" />
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>

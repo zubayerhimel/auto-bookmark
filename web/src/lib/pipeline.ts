@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { analyzeContent, classifyItem, embedText } from "./ai";
 import { findOrCreateCategory, listCategoryHints, pruneEmptyAiCategories } from "./categories";
+import { AI_UNAVAILABLE, PROCESSING_FAILED, UserError, userMessage } from "./errors";
 import { extractFromUrl, socialSite } from "./extract";
 
 /** Small in-process concurrency gate so bulk jobs don't fire hundreds of AI calls at once. */
@@ -23,9 +24,13 @@ function createLimiter(max: number) {
 
 const limit = createLimiter(3);
 
-function errorMessage(err: unknown) {
-  const message = err instanceof Error ? err.message : String(err);
-  return message.slice(0, 500);
+/** Runs an AI call; its failure (credits, rate limits, outages) reaches the user only as a general message. */
+async function aiStep<T>(task: () => Promise<T>): Promise<T> {
+  try {
+    return await task();
+  } catch (err) {
+    throw new UserError(AI_UNAVAILABLE, { cause: err });
+  }
 }
 
 async function refreshSearchVector(id: string) {
@@ -50,7 +55,7 @@ export async function refreshSavedCopy(userId: string, id: string): Promise<"upd
     .from(schema.bookmark)
     .where(and(eq(schema.bookmark.id, id), eq(schema.bookmark.userId, userId)))
     .limit(1);
-  if (!b) throw new Error("Bookmark not found.");
+  if (!b) throw new UserError("Bookmark not found.");
   const extracted = await extractFromUrl(b.url);
   const fresh = extracted.content;
   if (!fresh || fresh.length < (b.content?.length ?? 0) * 0.6) return "kept";
@@ -95,7 +100,12 @@ export async function processBookmark(id: string) {
         }
       } catch (err) {
         if (!item.content && !item.title) {
-          throw new Error(`Couldn't read the page: ${errorMessage(err)}`);
+          throw new UserError(
+            err instanceof UserError
+              ? `Couldn't read the page: ${err.message}`
+              : "Couldn't read the page. It may be down or blocking automated readers.",
+            { cause: err },
+          );
         }
       }
       // Keep what was extracted even if the AI step below fails.
@@ -115,7 +125,7 @@ export async function processBookmark(id: string) {
     }
 
     const categories = await listCategoryHints(item.userId);
-    const analysis = await analyzeContent(item, categories);
+    const analysis = await aiStep(() => analyzeContent(item, categories));
 
     let categoryId = item.categoryId;
     if (!item.categoryLocked) {
@@ -129,7 +139,7 @@ export async function processBookmark(id: string) {
     const kept = b.processedAt ? [] : b.tags;
     const tags = [...new Set([...kept, ...analysis.tags].map((t) => t.toLowerCase().trim()).filter(Boolean))].slice(0, 10);
 
-    const embedding = await embedText(
+    const embedding = await aiStep(() => embedText(
       [
         title,
         item.author && `By ${item.author}`,
@@ -142,7 +152,7 @@ export async function processBookmark(id: string) {
         .filter(Boolean)
         .join("\n"),
       "document",
-    );
+    ));
 
     await db
       .update(schema.bookmark)
@@ -170,7 +180,7 @@ export async function processBookmark(id: string) {
     console.error(`[pipeline] bookmark ${id} failed`, err);
     await db
       .update(schema.bookmark)
-      .set({ status: "failed", error: errorMessage(err) })
+      .set({ status: "failed", error: userMessage(err, PROCESSING_FAILED) })
       .where(eq(schema.bookmark.id, id));
     await refreshSearchVector(id).catch(() => {});
   }

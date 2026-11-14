@@ -1,6 +1,7 @@
 import { after, NextResponse } from "next/server";
 import { createLoader, parseAsString } from "nuqs/server";
 import { bookmarkJson, findBookmarkByUrl, parseSaveInput, saveBookmark } from "@/lib/bookmarks";
+import { userMessage } from "@/lib/errors";
 import { processBookmarks } from "@/lib/pipeline";
 import { getRequestUserId } from "@/lib/session";
 
@@ -26,8 +27,8 @@ export async function POST(req: Request) {
     after(() => processBookmarks([saved.id]));
     return NextResponse.json(saved, { status: 201 });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Couldn't save this link.";
-    return NextResponse.json({ error: message }, { status: 400 });
+    console.error("[api/bookmarks] save failed", err);
+    return NextResponse.json({ error: userMessage(err, "Couldn't save this link. Try again.") }, { status: 400 });
   }
 }
 

@@ -75,7 +75,7 @@ export function BookmarkRow({
             </IntentLink>
           </h3>
           {failed && item.error ? (
-            <p className="mt-1 line-clamp-2 text-sm text-destructive">{item.error}</p>
+            <p className="mt-1 line-clamp-2 text-sm break-words text-destructive">{item.error}</p>
           ) : blurb ? (
             <p className="mt-1 line-clamp-2 max-w-[68ch] text-sm leading-[1.55] text-ink-soft">
               <Highlight text={blurb} terms={terms} />

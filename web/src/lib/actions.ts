@@ -8,6 +8,7 @@ import { db, schema } from "@/db";
 import { libraryQuery, listBookmarks, saveBookmark } from "./bookmarks";
 import { findOrCreateCategory, pruneEmptyAiCategories, slugify, tidyName } from "./categories";
 import { importBookmarks, type ImportResult } from "./import";
+import { userMessage } from "./errors";
 import { checkBookmarkLink } from "./link-check";
 import { drainPending, processBookmarks, recategorizeAll, recategorizeBookmarks, refreshSavedCopy } from "./pipeline";
 import { loadLibraryParams } from "./search-params";
@@ -43,7 +44,8 @@ export async function addBookmarkAction(_prev: ActionState, formData: FormData):
     const saved = await saveBookmark(user.id, { url });
     after(() => processBookmarks([saved.id]));
   } catch (err) {
-    return { error: err instanceof Error ? err.message : "That link couldn't be saved." };
+    console.error("[add] save failed", err);
+    return { error: userMessage(err, "That link couldn't be saved. Try again.") };
   }
   refresh();
   return { ok: true, message: "Saved. Summarizing and filing it now." };
@@ -83,7 +85,8 @@ export async function refreshSavedCopyAction(id: string): Promise<ActionState> {
   try {
     outcome = await refreshSavedCopy(user.id, id);
   } catch (err) {
-    return { error: err instanceof Error ? `Couldn't fetch the page: ${err.message}` : "Couldn't fetch the page." };
+    console.error("[reader] refresh failed", err);
+    return { error: `Couldn't fetch the page. ${userMessage(err, "It may be down or blocking automated readers.")}` };
   }
   if (outcome === "kept") {
     return { error: "The page now shows less than the saved copy (maybe a sign-in wall), so the saved copy was kept." };

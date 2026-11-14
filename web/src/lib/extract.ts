@@ -4,6 +4,7 @@ import { isIP } from "node:net";
 import { Readability } from "@mozilla/readability";
 import { parseHTML } from "linkedom";
 import type { BookmarkType } from "@/db/schema";
+import { UserError } from "./errors";
 
 export const MAX_CONTENT_CHARS = 50_000;
 
@@ -68,9 +69,14 @@ const TRACKING_PARAMS = /^(utm_\w+|fbclid|gclid|mc_cid|mc_eid|ref_src|ref_url|ig
 
 /** Canonical form used for de-duplication. */
 export function normalizeUrl(raw: string): string {
-  const u = new URL(raw.trim());
+  let u: URL;
+  try {
+    u = new URL(raw.trim());
+  } catch {
+    throw new UserError("That isn't a valid web address.");
+  }
   if (u.protocol !== "http:" && u.protocol !== "https:") {
-    throw new Error("Only http and https links can be saved.");
+    throw new UserError("Only http and https links can be saved.");
   }
   const yt = youtubeId(u.toString());
   if (yt) return `https://www.youtube.com/watch?v=${yt}`;
@@ -109,15 +115,15 @@ function isPrivateAddress(ip: string) {
 
 async function assertPublicHost(url: URL) {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
-    throw new Error("Unsupported protocol");
+    throw new UserError("Only http and https links can be fetched.");
   }
   const host = url.hostname.replace(/^\[|\]$/g, "");
   if (host === "localhost" || host.endsWith(".local") || host.endsWith(".internal")) {
-    throw new Error("Refusing to fetch a private address");
+    throw new UserError("Private network addresses can't be fetched.");
   }
   const addresses = isIP(host) ? [{ address: host }] : await lookup(host, { all: true });
   if (addresses.some((a) => isPrivateAddress(a.address))) {
-    throw new Error("Refusing to fetch a private address");
+    throw new UserError("Private network addresses can't be fetched.");
   }
 }
 
@@ -143,7 +149,7 @@ async function safeFetch(raw: string, init: RequestInit = {}, timeoutMs = 15_000
     }
     return res;
   }
-  throw new Error("Too many redirects");
+  throw new UserError("The page redirected too many times.");
 }
 
 async function fetchJson<T>(url: string, timeoutMs = 10_000): Promise<T | null> {
@@ -338,7 +344,7 @@ export function extractFromHtml(url: string, html: string): Extracted {
 
 async function extractWeb(url: string): Promise<Extracted> {
   const res = await safeFetch(url, { headers: { accept: "text/html,application/xhtml+xml" } });
-  if (!res.ok) throw new Error(`The page responded with HTTP ${res.status}`);
+  if (!res.ok) throw new UserError(`The page responded with HTTP ${res.status}.`);
   const contentType = res.headers.get("content-type") ?? "";
   if (!contentType.includes("html")) {
     return {

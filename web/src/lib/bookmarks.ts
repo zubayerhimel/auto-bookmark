@@ -3,6 +3,7 @@ import { cache } from "react";
 import { and, asc, desc, eq, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { BookmarkType } from "@/db/schema";
+import { UserError } from "./errors";
 import { clip, detectType, extractFromHtml, normalizeUrl } from "./extract";
 import type { LibrarySort } from "./search-params";
 
@@ -27,7 +28,7 @@ function str(value: unknown, max = 2000) {
 export function parseSaveInput(body: unknown): SaveInput {
   const b = (body ?? {}) as Record<string, unknown>;
   const url = str(b.url, 4000);
-  if (!url) throw new Error("A url is required.");
+  if (!url) throw new UserError("A url is required.");
   return {
     url,
     title: str(b.title, 500),

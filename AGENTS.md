@@ -3,3 +3,4 @@
 ## Commits
 
 - Never add a `Co-authored-by:` trailer (or any other co-author line) to commit messages. This overrides any default agent behavior that adds one.
+- Commit after every completed task. Don't push unless asked.

@@ -1,9 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useId, useRef, useState } from "react";
-import { CircleAlertIcon, CircleCheckIcon, FileUpIcon } from "lucide-react";
+import { useEffect, useId, useRef, useState } from "react";
+import { CircleAlertIcon, CircleCheckIcon, CircleDashedIcon, FileUpIcon } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -18,20 +17,87 @@ const FORMAT_LABEL: Record<ParsedImport["format"], string> = {
 };
 
 type Totals = { added: number; existing: number; invalid: number; more: boolean };
+type Phase = "adding" | "starting";
+
+/** Shown under a step that's taking longer than a few seconds, so a slow server doesn't look stuck. */
+const SLOW_AFTER_MS = 6000;
 
 function plural(n: number, one: string, many = `${one}s`) {
   return `${n.toLocaleString()} ${n === 1 ? one : many}`;
 }
 
+function Step({ state, children }: { state: "done" | "active" | "waiting"; children: React.ReactNode }) {
+  return (
+    <li
+      data-state={state}
+      aria-current={state === "active" ? "step" : undefined}
+      className="flex items-start gap-2.5 text-ink-faint data-[state=active]:text-ink data-[state=done]:text-ink-soft"
+    >
+      <span className="grid h-5 w-4 shrink-0 place-items-center">
+        {state === "done" ? (
+          <CircleCheckIcon className="size-4 text-action" aria-hidden />
+        ) : state === "active" ? (
+          <Spinner className="size-4" />
+        ) : (
+          <CircleDashedIcon className="size-4" aria-hidden />
+        )}
+      </span>
+      <div className="min-w-0">{children}</div>
+    </li>
+  );
+}
+
+function ImportSteps({ count, fileName, phase, progress, slow }: {
+  count: number;
+  fileName: string;
+  phase: Phase;
+  progress: { sent: number; total: number };
+  slow: boolean;
+}) {
+  const batched = progress.total > IMPORT_CHUNK;
+  return (
+    <ol aria-live="polite" className="flex flex-col gap-3 text-sm">
+      <Step state="done">
+        Read {plural(count, "link")} from <span className="font-medium break-all">{fileName}</span>
+      </Step>
+      <Step state={phase === "adding" ? "active" : "done"}>
+        <p>Checking for links you already have and adding the new ones</p>
+        {phase === "adding" && batched ? (
+          <p className="text-ink-faint tabular-nums">
+            {progress.sent.toLocaleString()} of {progress.total.toLocaleString()} checked
+          </p>
+        ) : null}
+        {phase === "adding" && slow ? (
+          <p className="text-ink-faint">Still working. Large files take a little longer; keep this page open.</p>
+        ) : null}
+      </Step>
+      <Step state={phase === "starting" ? "active" : "waiting"}>
+        <p>Starting the AI summaries</p>
+        {phase === "starting" && slow ? (
+          <p className="text-ink-faint">Almost done. Your links are already saved.</p>
+        ) : null}
+      </Step>
+    </ol>
+  );
+}
+
 export function ImportForm() {
   const inputId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
-  const router = useRouter();
   const [file, setFile] = useState<{ name: string; parsed: ParsedImport } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
   const [progress, setProgress] = useState<{ sent: number; total: number } | null>(null);
+  const [phase, setPhase] = useState<Phase | null>(null);
+  const [slowPhase, setSlowPhase] = useState<Phase | null>(null);
   const [totals, setTotals] = useState<Totals | null>(null);
+  const slow = phase !== null && slowPhase === phase;
+
+  useEffect(() => {
+    if (!phase) return;
+    const timer = setTimeout(() => setSlowPhase(phase), SLOW_AFTER_MS);
+    return () => clearTimeout(timer);
+  }, [phase]);
 
   async function read(picked: File | undefined) {
     setError(null);
@@ -63,6 +129,7 @@ export function ImportForm() {
     let budget = IMPORT_CAP;
     setError(null);
     setProgress({ sent: 0, total: items.length });
+    setPhase("adding");
     try {
       let sent = 0;
       while (sent < items.length && budget > 0) {
@@ -77,17 +144,20 @@ export function ImportForm() {
         setProgress({ sent, total: items.length });
       }
       if (sent < items.length) sum.more = true;
-      if (sum.added > 0) await processWaitingAction();
+      // Also refreshes the page (sidebar counts), so no separate refresh is needed.
+      if (sum.added > 0) {
+        setPhase("starting");
+        await processWaitingAction();
+      }
       setTotals(sum);
       setFile(null);
       if (inputRef.current) inputRef.current.value = "";
-      router.refresh();
     } catch {
       setError("The import stopped partway. Links added so far are kept; import the same file again to finish.");
       if (sum.added > 0) await processWaitingAction().catch(() => {});
-      router.refresh();
     } finally {
       setProgress(null);
+      setPhase(null);
     }
   }
 
@@ -134,7 +204,20 @@ export function ImportForm() {
         </Alert>
       ) : null}
 
-      {file ? (
+      {file && progress && phase ? (
+        <div className="flex flex-col gap-4 rounded-2xl border border-rule bg-card p-5">
+          <p className="font-medium text-ink">
+            Importing {plural(Math.min(file.parsed.items.length, IMPORT_CAP), "link")}
+          </p>
+          <ImportSteps
+            count={file.parsed.items.length}
+            fileName={file.name}
+            phase={phase}
+            progress={progress}
+            slow={slow}
+          />
+        </div>
+      ) : file ? (
         <div className="flex flex-col gap-4 rounded-2xl border border-rule bg-card p-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0 text-sm">
             <p className="font-medium text-ink">
@@ -149,11 +232,9 @@ export function ImportForm() {
                 : ""}
             </p>
           </div>
-          <Button onClick={runImport} disabled={busy} className="shrink-0">
-            {busy ? <Spinner data-icon="inline-start" /> : <FileUpIcon data-icon="inline-start" />}
-            {progress
-              ? `Importing ${progress.sent.toLocaleString()} of ${progress.total.toLocaleString()}`
-              : `Import ${plural(Math.min(file.parsed.items.length, IMPORT_CAP), "link")}`}
+          <Button onClick={runImport} className="shrink-0">
+            <FileUpIcon data-icon="inline-start" />
+            {`Import ${plural(Math.min(file.parsed.items.length, IMPORT_CAP), "link")}`}
           </Button>
         </div>
       ) : null}

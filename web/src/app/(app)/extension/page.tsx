@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { createLoader, parseAsString, type SearchParams } from "nuqs/server";
 import { desc, eq } from "drizzle-orm";
+import { DownloadIcon } from "lucide-react";
 import { db, schema } from "@/db";
 import { ConnectExtension } from "@/components/connect-extension";
 import { RevokeTokenButton } from "@/components/revoke-token-button";
+import { Button } from "@/components/ui/button";
 import { timeAgo } from "@/lib/format";
 import { requireUser } from "@/lib/session";
 
@@ -27,6 +29,23 @@ export default async function ExtensionPage({
   const code = "rounded-md bg-paper px-1.5 py-0.5 font-mono text-[0.8125rem] break-all text-ink";
   const steps = [
     {
+      title: "Download the extension",
+      body: (
+        <div className="flex flex-col items-start gap-3">
+          <p>
+            Unzip it somewhere you&apos;ll keep it. The browser loads the extension from that folder, so don&apos;t
+            delete it afterwards.
+          </p>
+          <Button asChild variant="outline">
+            <a href="/auto-bookmark-extension.zip" download>
+              <DownloadIcon data-icon="inline-start" />
+              Download extension (.zip)
+            </a>
+          </Button>
+        </div>
+      ),
+    },
+    {
       title: "Turn on Developer mode",
       body: (
         <>
@@ -38,7 +57,8 @@ export default async function ExtensionPage({
       title: "Load the extension",
       body: (
         <>
-          Choose Load unpacked and select the <code className={code}>extension</code> folder from this project.
+          Choose Load unpacked and select the unzipped folder, the one that contains{" "}
+          <code className={code}>manifest.json</code>.
         </>
       ),
     },

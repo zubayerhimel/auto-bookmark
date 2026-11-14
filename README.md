@@ -74,16 +74,20 @@ write any of them.
 
 ## Browser extension
 
-1. Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and pick the
-   `extension/` folder.
-2. A sign-in tab opens. After signing in, the extension connects to your account automatically.
-3. Pin the extension. Click it (or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) on any page.
+1. Get the extension: click **Download extension (.zip)** on the app's **Browser extension** page
+   (`/extension`) and unzip it, or use the `extension/` folder from this repo. The zip is built from
+   `extension/` by `web/scripts/zip-extension.mjs` whenever `pnpm dev` or `pnpm build` runs, and
+   served at `/auto-bookmark-extension.zip`.
+2. Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and pick the
+   folder that contains `manifest.json`.
+3. A sign-in tab opens. After signing in, the extension connects to your account automatically.
+4. Pin the extension. Click it (or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) on any page.
    The popup saves the page and shows its summary, category and tags once the AI has filed it,
    with **Undo** if you didn't mean to. On a page you saved before, it shows that bookmark
    instead of saving again.
-4. Search your library from the popup's search box; results open in a new tab.
-5. The toolbar button shows ✓ on pages that are already in your library.
-6. Save single posts from a feed on X, Instagram and Facebook. On X, each post gets a bookmark
+5. Search your library from the popup's search box; results open in a new tab.
+6. The toolbar button shows ✓ on pages that are already in your library.
+7. Save single posts from a feed on X, Instagram and Facebook. On X, each post gets a bookmark
    button next to Like and Share. On Instagram and Facebook, a **Save** button appears on the
    post under your mouse. You can also right-click a post and choose **Save this post to Auto
    Bookmark**. The post's own link, text, author and image are saved, not the whole feed.

@@ -121,6 +121,22 @@ embedded favicons are no problem.
   in batches of up to four minutes. If a batch is cut off (Vercel's function limit, a restart), the
   app resumes it the next time it notices bookmarks waiting with no job running.
 
+## Saving from your phone
+
+The web app is installable, and its manifest registers it as a share target
+(`web/src/app/manifest.ts`), so saving works from any app's Share menu.
+
+- **Android**: open the site in Chrome, sign in, and choose **Install app** (or **Add to Home
+  screen**). **Auto Bookmark** then shows up in the share sheet.
+- **iPhone / iPad**: iOS doesn't let web apps join the share sheet, so use a Shortcut: turn on
+  **Show in Share Sheet**, add **URL Encode** on the Shortcut Input, then **Open URLs** with
+  `https://<your-domain>/share?url=<encoded input>`. The **Extension** page shows the exact address.
+
+`/share` accepts `url`, `text` and `title` and finds the link in whichever one holds it (many
+Android apps put it inside `text`); other shared text, like a highlighted passage, becomes the
+bookmark's note (`web/src/lib/share.ts`). Visits from another site only show a **Save** button
+instead of saving on their own. If the link is already saved, the page shows it instead.
+
 ## How it works
 
 1. **Save**: the extension captures what's on screen: tweet text and author on X, a single post's text and images on Instagram and Facebook, title,
@@ -150,6 +166,7 @@ embedded favicons are no problem.
 | `web/src/lib/ai.ts` | Prompts and models: analyze, classify, plan search, embed |
 | `web/src/lib/pipeline.ts` | Background processing (claims each bookmark atomically; `drainPending` resumes waiting ones) and re-categorization |
 | `web/src/lib/import-parse.ts`, `web/src/lib/import.ts` | Import: parsing exports in the browser; adding the links server-side |
+| `web/src/lib/share.ts`, `web/src/app/(app)/share/page.tsx` | Share target: saving links shared from a phone |
 | `web/src/lib/search.ts` | Hybrid semantic + keyword search |
 | `web/src/lib/actions.ts` | Server actions used by the UI |
 | `web/src/app/api/*` | Routes used by the extension |

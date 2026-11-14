@@ -48,6 +48,14 @@ export async function addBookmarkAction(_prev: ActionState, formData: FormData):
   return { ok: true, message: "Saved. Summarizing and filing it now." };
 }
 
+/** Saves a link shared from another app (the /share page). Returns nothing; the page shows the result. */
+export async function shareBookmarkAction(url: string, note: string | null) {
+  const user = await requireUser();
+  const saved = await saveBookmark(user.id, { url, note: note?.slice(0, 2000) || null });
+  after(() => processBookmarks([saved.id]));
+  refresh();
+}
+
 async function ownBookmark(userId: string, id: string) {
   const [row] = await db
     .select({ id: schema.bookmark.id, categoryId: schema.bookmark.categoryId })

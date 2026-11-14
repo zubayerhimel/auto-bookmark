@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import { createLoader, parseAsString, type SearchParams } from "nuqs/server";
 import { desc, eq } from "drizzle-orm";
 import { DownloadIcon } from "lucide-react";
@@ -20,6 +21,10 @@ export default async function ExtensionPage({
 }) {
   const user = await requireUser();
   const { connect } = await loadParams(searchParams);
+  const requestHeaders = await headers();
+  const host = requestHeaders.get("x-forwarded-host") ?? requestHeaders.get("host") ?? "localhost:3000";
+  const proto = requestHeaders.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const origin = `${proto}://${host}`;
   const tokens = await db
     .select()
     .from(schema.apiToken)
@@ -98,6 +103,36 @@ export default async function ExtensionPage({
             </li>
           ))}
         </ol>
+      </section>
+
+      <section aria-labelledby="phone" className="mt-12">
+        <h2 id="phone" className="text-lg font-semibold tracking-tight">
+          Save from your phone
+        </h2>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-rule bg-card p-5">
+            <h3 className="font-semibold">Android</h3>
+            <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+              Open this site in Chrome, sign in, and choose Install app (or Add to Home screen) from the ⋮ menu. Auto
+              Bookmark then appears when you tap Share in any app: the browser, YouTube, X, Reddit. Shared text along
+              with the link is kept as a note.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-rule bg-card p-5">
+            <h3 className="font-semibold">iPhone and iPad</h3>
+            <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+              iOS doesn&apos;t let web apps join the share sheet, so add a Shortcut once. In the Shortcuts app, create
+              one and turn on Show in Share Sheet. Add the action URL Encode on the Shortcut Input, then Open URLs with
+              this address, putting the encoded text where it says <code className={code}>…</code>:
+            </p>
+            <p className="mt-2">
+              <code className={code}>{`${origin}/share?url=…`}</code>
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-ink-soft">
+              Sign in once in Safari and the Shortcut saves whatever you share with it.
+            </p>
+          </div>
+        </div>
       </section>
 
       <section aria-labelledby="browsers" className="mt-12">

@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { SearchParams } from "nuqs/server";
 import type { BookmarkType } from "@/db/schema";
-import { BookmarkPlusIcon, CheckCheckIcon, CircleAlertIcon, PuzzleIcon, RotateCwIcon } from "lucide-react";
+import { BookmarkPlusIcon, CheckCheckIcon, CircleAlertIcon, FileUpIcon, PuzzleIcon, RotateCwIcon } from "lucide-react";
 import { AddLinkForm } from "@/components/add-link-form";
 import { BookmarkFeed } from "@/components/bookmark-feed";
 import { SortMenu } from "@/components/sort-menu";
@@ -174,14 +174,20 @@ export default async function LibraryPage({ searchParams }: PageProps) {
                 <EmptyTitle>Your library is empty</EmptyTitle>
                 <EmptyDescription>
                   Paste a link above, or connect the browser extension and click its button on any page, post on X,
-                  or YouTube video.
+                  or YouTube video. Already have bookmarks elsewhere? Bring them in.
                 </EmptyDescription>
               </EmptyHeader>
-              <EmptyContent>
+              <EmptyContent className="flex-row flex-wrap justify-center">
                 <Button asChild>
                   <Link href="/extension">
                     <PuzzleIcon data-icon="inline-start" />
                     Connect the extension
+                  </Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href="/import">
+                    <FileUpIcon data-icon="inline-start" />
+                    Import bookmarks
                   </Link>
                 </Button>
               </EmptyContent>

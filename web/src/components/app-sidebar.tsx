@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQueryStates } from "nuqs";
 import { Suspense } from "react";
-import { BookOpenIcon, LibraryIcon, PuzzleIcon, TagsIcon } from "lucide-react";
+import { BookOpenIcon, FileUpIcon, LibraryIcon, PuzzleIcon, TagsIcon } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { LogoMark } from "@/components/logo";
 import {
@@ -167,6 +167,14 @@ export function AppSidebar(props: Props) {
               <Link href="/categories" onClick={close}>
                 <TagsIcon />
                 <span>Manage categories</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname === "/import"}>
+              <Link href="/import" onClick={close}>
+                <FileUpIcon />
+                <span>Import bookmarks</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

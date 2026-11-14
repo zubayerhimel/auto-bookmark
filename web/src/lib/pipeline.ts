@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { analyzeContent, classifyItem, embedText } from "./ai";
 import { findOrCreateCategory, listCategoryHints, pruneEmptyAiCategories } from "./categories";
@@ -39,14 +39,23 @@ async function refreshSearchVector(id: string) {
   `);
 }
 
-export async function processBookmark(id: string) {
-  const [b] = await db.select().from(schema.bookmark).where(eq(schema.bookmark.id, id)).limit(1);
-  if (!b) return;
+/**
+ * Waiting to be processed: pending, or "processing" for so long that the job doing it must have
+ * died (a serverless function hitting its time limit mid-import, say).
+ */
+const waiting = or(
+  eq(schema.bookmark.status, "pending"),
+  and(eq(schema.bookmark.status, "processing"), lt(schema.bookmark.updatedAt, sql`now() - interval '10 minutes'`)),
+)!;
 
-  await db
+export async function processBookmark(id: string) {
+  // Claiming the row in one statement means two workers can never process the same bookmark.
+  const [b] = await db
     .update(schema.bookmark)
     .set({ status: "processing", error: null })
-    .where(eq(schema.bookmark.id, id));
+    .where(and(eq(schema.bookmark.id, id), waiting))
+    .returning();
+  if (!b) return;
 
   try {
     const item = { ...b };
@@ -96,7 +105,9 @@ export async function processBookmark(id: string) {
 
     // Keep the page's own title for articles and videos; social posts get the AI's descriptive title.
     const title = social || !item.title ? analysis.title : item.title;
-    const tags = [...new Set(analysis.tags.map((t) => t.toLowerCase().trim()).filter(Boolean))].slice(0, 10);
+    // The first time through, keep tags it arrived with (folder names from an import) ahead of the AI's.
+    const kept = b.processedAt ? [] : b.tags;
+    const tags = [...new Set([...kept, ...analysis.tags].map((t) => t.toLowerCase().trim()).filter(Boolean))].slice(0, 10);
 
     const embedding = await embedText(
       [
@@ -147,6 +158,32 @@ export async function processBookmark(id: string) {
 
 export function processBookmarks(ids: string[]) {
   return Promise.all(ids.map((id) => limit(() => processBookmark(id))));
+}
+
+/**
+ * Works through bookmarks still waiting to be processed (an import, or saves whose background job
+ * was cut off), newest first, until none are left or the time budget runs out. Whatever is left
+ * is picked up by the next call. `userId` null means every user's (the cron sweep).
+ */
+export async function drainPending(userId: string | null, budgetMs: number) {
+  const deadline = Date.now() + budgetMs;
+  const tried = new Set<string>();
+  let processed = 0;
+  while (Date.now() < deadline) {
+    const rows = await db
+      .select({ id: schema.bookmark.id })
+      .from(schema.bookmark)
+      .where(userId ? and(eq(schema.bookmark.userId, userId), waiting) : waiting)
+      .orderBy(desc(schema.bookmark.createdAt))
+      .limit(6);
+    // Another worker may hold some of these; never spin on the same ids.
+    const ids = rows.map((r) => r.id).filter((id) => !tried.has(id));
+    if (!ids.length) break;
+    for (const id of ids) tried.add(id);
+    await processBookmarks(ids);
+    processed += ids.length;
+  }
+  return processed;
 }
 
 /**

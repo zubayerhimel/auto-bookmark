@@ -7,11 +7,18 @@ import { and, eq, isNull, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { libraryQuery, listBookmarks, saveBookmark } from "./bookmarks";
 import { findOrCreateCategory, pruneEmptyAiCategories, slugify, tidyName } from "./categories";
-import { processBookmarks, recategorizeAll, recategorizeBookmarks } from "./pipeline";
+import { importBookmarks, type ImportResult } from "./import";
+import { drainPending, processBookmarks, recategorizeAll, recategorizeBookmarks } from "./pipeline";
 import { loadLibraryParams } from "./search-params";
 import { generateToken, hashToken, requireUser } from "./session";
 
 export type ActionState = { ok?: boolean; error?: string; message?: string } | null;
+
+/**
+ * How long one background run keeps processing. Stays under the 300s function limit on Vercel;
+ * anything left over is resumed by the next run.
+ */
+const PROCESSING_BUDGET_MS = 240_000;
 
 function refresh() {
   revalidatePath("/", "layout");
@@ -226,6 +233,24 @@ export async function retryFailedAction() {
     .where(and(eq(schema.bookmark.userId, user.id), eq(schema.bookmark.status, "failed")))
     .returning({ id: schema.bookmark.id });
   after(() => processBookmarks(failed.map((f) => f.id)));
+  refresh();
+}
+
+// ---------- Import ----------
+
+/** One chunk of an import, parsed in the browser. `budget` is how many new links this import may still add. */
+export async function importBookmarksAction(items: unknown, budget: number): Promise<ImportResult> {
+  const user = await requireUser();
+  return importBookmarks(user.id, items, budget);
+}
+
+/**
+ * Works through the user's waiting bookmarks in the background: called once an import is in, and
+ * by the app whenever it notices bookmarks sitting unprocessed with no job running.
+ */
+export async function processWaitingAction() {
+  const user = await requireUser();
+  after(() => drainPending(user.id, PROCESSING_BUDGET_MS));
   refresh();
 }
 

@@ -4,6 +4,7 @@ import { cookies } from "next/headers";
 import { UserButton } from "@clerk/nextjs";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AutoRefresh } from "@/components/auto-refresh";
+import { ResumeProcessing } from "@/components/resume-processing";
 import { LogoMark } from "@/components/logo";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -27,6 +28,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     <SidebarProvider defaultOpen={defaultOpen}>
       {/* Lives in the layout so sidebar counts update too, not just the page. */}
       <AutoRefresh active={stats.busy > 0 || stats.filing > 0} />
+      <ResumeProcessing stalled={stats.stalled > 0 && stats.working === 0} />
       <AppSidebar categories={categories} total={stats.total} uncategorized={stats.uncategorized} unread={stats.unread} />
       <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur md:static md:h-12 md:rounded-t-xl md:border-none md:bg-transparent md:backdrop-blur-none">

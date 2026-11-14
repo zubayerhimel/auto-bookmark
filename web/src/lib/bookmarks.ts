@@ -361,6 +361,9 @@ export const libraryStats = cache(async (userId: string) => {
       // Ready but not yet filed: the AI is choosing a category (e.g. after their category was deleted).
       filing: sql<number>`count(*) filter (where ${schema.bookmark.status} = 'ready' and ${schema.bookmark.categoryId} is null and not ${schema.bookmark.categoryLocked})::int`,
       unread: sql<number>`count(*) filter (where ${schema.bookmark.readAt} is null)::int`,
+      // Waiting with nothing working on them: the background job that should have was cut off.
+      stalled: sql<number>`count(*) filter (where (${schema.bookmark.status} = 'pending' and ${schema.bookmark.updatedAt} < now() - interval '1 minute') or (${schema.bookmark.status} = 'processing' and ${schema.bookmark.updatedAt} < now() - interval '10 minutes'))::int`,
+      working: sql<number>`count(*) filter (where ${schema.bookmark.status} = 'processing' and ${schema.bookmark.updatedAt} >= now() - interval '10 minutes')::int`,
     })
     .from(schema.bookmark)
     .where(eq(schema.bookmark.userId, userId));

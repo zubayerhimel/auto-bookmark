@@ -103,6 +103,24 @@ The extension talks to the deployed app at `https://auto-bookmark.vercel.app` by
 local or other deployment, set the address in the extension's options (right-click the toolbar
 button, then **Options**), then connect again. For local development that is `http://localhost:3000`.
 
+## Importing bookmarks
+
+**Import bookmarks** (`/import`) takes a browser's bookmark export (the HTML file Chrome, Edge,
+Firefox, Safari, Brave and Arc all produce), a CSV export with a `url` column (Pocket, Raindrop,
+Instapaper), or a text file of links. The file is parsed in the browser
+(`web/src/lib/import-parse.ts`); only the links are sent, in chunks, so large exports with
+embedded favicons are no problem.
+
+- Folder names become tags (the browser's own root folders like "Bookmarks bar" are skipped), along
+  with any tags in the export. The original save date is kept.
+- Links already in the library are skipped and left untouched. Imported links stay off the
+  reading list unless the source marks them unread (Pocket).
+- One import adds at most 500 new links, newest first, to bound AI cost. Import the same file
+  again to add the next batch.
+- Each link is then fetched, summarized and filed like a new save. Processing runs in the background
+  in batches of up to four minutes. If a batch is cut off (Vercel's function limit, a restart), the
+  app resumes it the next time it notices bookmarks waiting with no job running.
+
 ## How it works
 
 1. **Save**: the extension captures what's on screen: tweet text and author on X, a single post's text and images on Instagram and Facebook, title,
@@ -130,7 +148,8 @@ button, then **Options**), then connect again. For local development that is `ht
 | `web/src/proxy.ts`, `web/src/lib/session.ts` | Clerk middleware; session and extension-token checks |
 | `web/src/lib/extract.ts` | URL normalization, safe fetching, page/X/YouTube extraction |
 | `web/src/lib/ai.ts` | Prompts and models: analyze, classify, plan search, embed |
-| `web/src/lib/pipeline.ts` | Background processing and re-categorization |
+| `web/src/lib/pipeline.ts` | Background processing (claims each bookmark atomically; `drainPending` resumes waiting ones) and re-categorization |
+| `web/src/lib/import-parse.ts`, `web/src/lib/import.ts` | Import: parsing exports in the browser; adding the links server-side |
 | `web/src/lib/search.ts` | Hybrid semantic + keyword search |
 | `web/src/lib/actions.ts` | Server actions used by the UI |
 | `web/src/app/api/*` | Routes used by the extension |

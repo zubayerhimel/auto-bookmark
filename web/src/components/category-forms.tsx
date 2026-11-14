@@ -265,7 +265,7 @@ function UncategorizedItem({ count, busy }: { count: number; busy: number }) {
           href={libraryHref("/library", { category: "uncategorized" })}
           className="inline-flex items-center gap-2.5 rounded-sm text-lg font-semibold transition-colors duration-150 ease-out hover:text-action"
         >
-          <span aria-hidden className="size-2.5 shrink-0 rounded-full bg-rule" />
+          <span aria-hidden className="size-2.5 shrink-0 rounded-full bg-ink-faint" />
           Uncategorized
         </Link>
         <span className="text-sm text-ink-faint tabular-nums">{plural(count, "bookmark")}</span>

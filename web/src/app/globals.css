@@ -6,84 +6,138 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Brand palette */
-  --paper: #e9edf1;
-  --sheet: #f9fafb;
-  --ink: #1b2430;
-  --ink-soft: #4a5565;
-  --ink-faint: #7a8594;
-  --rule: #d3dae2;
-  --action: #2446c7;
-  --action-press: #1b3699;
-  --action-foreground: #ffffff;
+  /* App tokens, derived from the shadcn theme (tweakcn "vercel") below */
+  --paper: oklch(0.97 0 0);
+  --sheet: var(--background);
+  --ink: var(--foreground);
+  --ink-soft: var(--muted-foreground);
+  --ink-faint: oklch(0.56 0 0);
+  --rule: var(--border);
+  --action: oklch(0.55 0.22 264.53);
+  --action-press: oklch(0.47 0.2 264.53);
+  --action-foreground: oklch(1 0 0);
   --highlight: #f5d547;
-  --highlight-foreground: #1b2430;
+  --highlight-foreground: oklch(0 0 0);
   --mark: color-mix(in srgb, var(--highlight) 85%, transparent);
-  --danger: #b42318;
+  --danger: var(--destructive);
   color-scheme: light;
 
-  /* shadcn roles mapped onto the palette */
-  --background: var(--sheet);
-  --foreground: var(--ink);
-  --card: #ffffff;
-  --card-foreground: var(--ink);
-  --popover: #ffffff;
-  --popover-foreground: var(--ink);
-  --primary: var(--ink);
-  --primary-foreground: #ffffff;
-  --secondary: var(--paper);
-  --secondary-foreground: var(--ink);
-  --muted: var(--paper);
-  --muted-foreground: var(--ink-soft);
-  --accent: var(--paper);
-  --accent-foreground: var(--ink);
-  --destructive: var(--danger);
-  --border: var(--rule);
-  --input: var(--rule);
-  --ring: var(--action);
-  --chart-1: var(--action);
-  --chart-2: #0f766e;
-  --chart-3: #b45309;
-  --chart-4: #7c3aed;
-  --chart-5: var(--ink-faint);
-  --radius: 0.75rem;
-  --sidebar: var(--paper);
-  --sidebar-foreground: var(--ink);
-  --sidebar-primary: var(--ink);
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #dde3ea;
-  --sidebar-active: #ffffff;
-  --sidebar-accent-foreground: var(--ink);
-  --sidebar-border: var(--rule);
-  --sidebar-ring: var(--action);
+  /* shadcn theme */
+  --background: oklch(0.9900 0 0);
+  --foreground: oklch(0 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0 0 0);
+  --popover: oklch(0.9900 0 0);
+  --popover-foreground: oklch(0 0 0);
+  --primary: oklch(0 0 0);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.9400 0 0);
+  --secondary-foreground: oklch(0 0 0);
+  --muted: oklch(0.9700 0 0);
+  --muted-foreground: oklch(0.4400 0 0);
+  --accent: oklch(0.9400 0 0);
+  --accent-foreground: oklch(0 0 0);
+  --destructive: oklch(0.6300 0.1900 23.0300);
+  --border: oklch(0.9200 0 0);
+  --input: oklch(0.9400 0 0);
+  --ring: oklch(0 0 0);
+  --chart-1: oklch(0.8100 0.1700 75.3500);
+  --chart-2: oklch(0.5500 0.2200 264.5300);
+  --chart-3: oklch(0.7200 0 0);
+  --chart-4: oklch(0.9200 0 0);
+  --chart-5: oklch(0.5600 0 0);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.9900 0 0);
+  --sidebar-foreground: oklch(0 0 0);
+  --sidebar-primary: oklch(0 0 0);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.9400 0 0);
+  --sidebar-active: var(--card);
+  --sidebar-accent-foreground: oklch(0 0 0);
+  --sidebar-border: oklch(0.9400 0 0);
+  --sidebar-ring: oklch(0 0 0);
+  --destructive-foreground: oklch(1 0 0);
+  --font-sans: var(--font-geist-sans), Geist, system-ui, sans-serif;
+  --font-serif: Georgia, serif;
+  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
+  --shadow-color: hsl(0 0% 0%);
+  --shadow-opacity: 0.18;
+  --shadow-blur: 2px;
+  --shadow-spread: 0px;
+  --shadow-offset-x: 0px;
+  --shadow-offset-y: 1px;
+  --letter-spacing: 0em;
+  --spacing: 0.25rem;
+  --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+  --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+  --shadow-sm: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+  --shadow: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+  --shadow-md: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 2px 4px -1px hsl(0 0% 0% / 0.18);
+  --shadow-lg: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 4px 6px -1px hsl(0 0% 0% / 0.18);
+  --shadow-xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 8px 10px -1px hsl(0 0% 0% / 0.18);
+  --shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
+  --tracking-normal: 0em;
 }
 
 .dark {
-  --paper: #0e1217;
-  --sheet: #151a21;
-  --ink: #e6eaf0;
-  --ink-soft: #a6b0bd;
-  --ink-faint: #7f8a99;
-  --rule: #2b333e;
-  --action: #8aa4ff;
-  --action-press: #b0c2ff;
-  --action-foreground: #0e1217;
-  --danger: #f97066;
+  --paper: oklch(0.1 0 0);
+  --ink-faint: oklch(0.6 0 0);
+  --action: oklch(0.72 0.15 258);
+  --action-press: oklch(0.8 0.11 258);
+  --action-foreground: oklch(0 0 0);
   --mark: color-mix(in srgb, var(--highlight) 30%, transparent);
   color-scheme: dark;
 
-  --card: #1b212a;
-  --popover: #1f2630;
-  --primary-foreground: #0e1217;
-  --secondary: #222a35;
-  --muted: #222a35;
-  --accent: #222a35;
-  --chart-2: #2dd4bf;
-  --chart-3: #f59e0b;
-  --chart-4: #a78bfa;
-  --sidebar-primary-foreground: #0e1217;
-  --sidebar-accent: #1b212a;
-  --sidebar-active: #222a35;
+  --card: oklch(0.1400 0 0);
+  --popover: oklch(0.1800 0 0);
+  --primary-foreground: oklch(0 0 0);
+  --secondary: oklch(0.2500 0 0);
+  --muted: oklch(0.2300 0 0);
+  --accent: oklch(0.3200 0 0);
+  --chart-2: oklch(0.5800 0.2100 260.8400);
+  --chart-3: oklch(0.5600 0 0);
+  --chart-4: oklch(0.4400 0 0);
+  --sidebar-primary-foreground: oklch(0 0 0);
+  --sidebar-accent: oklch(0.3200 0 0);
+  --sidebar-active: oklch(0.25 0 0);
+  --background: oklch(0 0 0);
+  --foreground: oklch(1 0 0);
+  --card-foreground: oklch(1 0 0);
+  --popover-foreground: oklch(1 0 0);
+  --primary: oklch(1 0 0);
+  --secondary-foreground: oklch(1 0 0);
+  --muted-foreground: oklch(0.7200 0 0);
+  --accent-foreground: oklch(1 0 0);
+  --destructive: oklch(0.6900 0.2000 23.9100);
+  --destructive-foreground: oklch(0 0 0);
+  --border: oklch(0.2600 0 0);
+  --input: oklch(0.3200 0 0);
+  --ring: oklch(0.7200 0 0);
+  --chart-1: oklch(0.8100 0.1700 75.3500);
+  --chart-5: oklch(0.9200 0 0);
+  --radius: 0.5rem;
+  --sidebar: oklch(0.1800 0 0);
+  --sidebar-foreground: oklch(1 0 0);
+  --sidebar-primary: oklch(1 0 0);
+  --sidebar-accent-foreground: oklch(1 0 0);
+  --sidebar-border: oklch(0.3200 0 0);
+  --sidebar-ring: oklch(0.7200 0 0);
+  --shadow-color: hsl(0 0% 0%);
+  --shadow-opacity: 0.18;
+  --shadow-blur: 2px;
+  --shadow-spread: 0px;
+  --shadow-offset-x: 0px;
+  --shadow-offset-y: 1px;
+  --letter-spacing: 0em;
+  --spacing: 0.25rem;
+  --shadow-2xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+  --shadow-xs: 0px 1px 2px 0px hsl(0 0% 0% / 0.09);
+  --shadow-sm: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+  --shadow: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 1px 2px -1px hsl(0 0% 0% / 0.18);
+  --shadow-md: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 2px 4px -1px hsl(0 0% 0% / 0.18);
+  --shadow-lg: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 4px 6px -1px hsl(0 0% 0% / 0.18);
+  --shadow-xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.18), 0px 8px 10px -1px hsl(0 0% 0% / 0.18);
+  --shadow-2xl: 0px 1px 2px 0px hsl(0 0% 0% / 0.45);
 }
 
 @theme inline {
@@ -102,10 +156,9 @@
   --color-action-foreground: var(--action-foreground);
   --color-highlight: var(--highlight);
   --color-danger: var(--danger);
-  --font-sans: var(--font-inter), system-ui, sans-serif;
-  --font-heading: var(--font-inter), system-ui, sans-serif;
-  /* Inter's opsz axis already tightens large sizes, so headings need less negative tracking than usual. */
-  --tracking-tight: -0.012em;
+  --font-sans: var(--font-geist-sans), Geist, system-ui, sans-serif;
+  --font-heading: var(--font-geist-sans), Geist, system-ui, sans-serif;
+  --tracking-tight: calc(var(--tracking-normal) - 0.025em);
 
   /* 1.2 modular scale from a 15px base */
   --text-xs: 0.8125rem;
@@ -156,6 +209,31 @@
   --radius-2xl: calc(var(--radius) * 1.8);
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
+  --font-mono: var(--font-geist-mono), "Geist Mono", ui-monospace, monospace;
+  --font-serif: Georgia, serif;
+  --radius: 0.5rem;
+  --tracking-tighter: calc(var(--tracking-normal) - 0.05em);
+  --tracking-wide: calc(var(--tracking-normal) + 0.025em);
+  --tracking-wider: calc(var(--tracking-normal) + 0.05em);
+  --tracking-widest: calc(var(--tracking-normal) + 0.1em);
+  --tracking-normal: var(--tracking-normal);
+  --shadow-2xl: var(--shadow-2xl);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-md: var(--shadow-md);
+  --shadow: var(--shadow);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-xs: var(--shadow-xs);
+  --shadow-2xs: var(--shadow-2xs);
+  --spacing: var(--spacing);
+  --letter-spacing: var(--letter-spacing);
+  --shadow-offset-y: var(--shadow-offset-y);
+  --shadow-offset-x: var(--shadow-offset-x);
+  --shadow-spread: var(--shadow-spread);
+  --shadow-blur: var(--shadow-blur);
+  --shadow-opacity: var(--shadow-opacity);
+  --color-shadow-color: var(--shadow-color);
+  --color-destructive-foreground: var(--destructive-foreground);
 }
 
 @layer base {
@@ -169,6 +247,7 @@
   body {
     font-size: var(--text-base);
     line-height: 1.5;
+    letter-spacing: var(--tracking-normal);
   }
   /* Plain links and controls get a ring that follows their own corners.
      Components with their own focus styles opt out via outline-none. */

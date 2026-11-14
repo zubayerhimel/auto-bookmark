@@ -90,7 +90,7 @@ function CategoryMenu({ categories, uncategorized }: Props) {
       color: c.color,
     })),
     ...(uncategorized > 0
-      ? [{ key: "uncategorized", href: libraryHref("/library", { category: "uncategorized", sort }), label: "Uncategorized", count: uncategorized, color: "var(--rule)" }]
+      ? [{ key: "uncategorized", href: libraryHref("/library", { category: "uncategorized", sort }), label: "Uncategorized", count: uncategorized, color: "var(--ink-faint)" }]
       : []),
   ];
 

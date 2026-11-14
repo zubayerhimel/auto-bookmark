@@ -2,19 +2,15 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { shadcn } from "@clerk/ui/themes";
 import type { Metadata, Viewport } from "next";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
-import { Inter } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import "./globals.css";
 
-// The opsz axis lets headings pick up Inter's tighter display cut while body text keeps the open text cut.
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  axes: ["opsz"],
-});
+const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
 
 const description =
   "Save pages, posts on X and YouTube videos in one click. AI summarizes and files them; find them again by describing them.";
@@ -46,14 +42,14 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#e9edf1" },
-    { media: "(prefers-color-scheme: dark)", color: "#0e1217" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f5f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
   ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={cn("antialiased", inter.variable)} suppressHydrationWarning>
+    <html lang="en" className={cn("antialiased", geistSans.variable, geistMono.variable)} suppressHydrationWarning>
       <body className="min-h-dvh">
         <ThemeProvider>
           <ClerkProvider

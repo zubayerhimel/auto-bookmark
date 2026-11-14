@@ -4,7 +4,6 @@ import { cookies } from "next/headers";
 import { UserButton } from "@clerk/nextjs";
 import { AppSidebar } from "@/components/app-sidebar";
 import { AutoRefresh } from "@/components/auto-refresh";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { LogoMark } from "@/components/logo";
 import { Separator } from "@/components/ui/separator";
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -38,7 +37,6 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             Auto Bookmark
           </Link>
           <div className="ml-auto flex items-center gap-2 md:hidden">
-            <ThemeToggle />
             <UserButton />
           </div>
         </header>

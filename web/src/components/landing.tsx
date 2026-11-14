@@ -251,7 +251,6 @@ export function Landing({ next }: { next: string }) {
             <LogoMark className="size-7" />
             Auto Bookmark
           </span>
-          <ThemeToggle className="ml-auto" />
         </header>
 
         <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
@@ -282,6 +281,13 @@ export function Landing({ next }: { next: string }) {
             Start with the next thing you want to keep.
           </p>
           <AuthButtons next={next} size="default" />
+        </div>
+        <div className="mx-auto flex max-w-6xl items-center justify-between border-t border-rule px-5 py-4 sm:px-8">
+          <span className="inline-flex items-center gap-2 text-sm font-bold tracking-tight text-ink-soft">
+            <LogoMark className="size-5" />
+            Auto Bookmark
+          </span>
+          <ThemeToggle />
         </div>
       </footer>
     </div>

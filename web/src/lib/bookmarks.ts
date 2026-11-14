@@ -116,6 +116,7 @@ export const listFields = {
   error: schema.bookmark.error,
   createdAt: schema.bookmark.createdAt,
   readAt: schema.bookmark.readAt,
+  linkStatus: schema.bookmark.linkStatus,
   categoryLocked: schema.bookmark.categoryLocked,
   categoryId: schema.category.id,
   categoryName: schema.category.name,
@@ -138,6 +139,7 @@ export type BookmarkListItem = {
   error: string | null;
   createdAt: Date;
   readAt: Date | null;
+  linkStatus: "ok" | "dead" | null;
   categoryLocked: boolean;
   categoryId: string | null;
   categoryName: string | null;

@@ -95,6 +95,9 @@ export const bookmark = pgTable(
     processedAt: timestamp("processed_at"),
     /** When the user opened it; null means it's still on their reading list. */
     readAt: timestamp("read_at"),
+    /** Result of the last link check: "dead" when the page is gone. Null until checked. */
+    linkStatus: text("link_status", { enum: ["ok", "dead"] }),
+    linkCheckedAt: timestamp("link_checked_at"),
   },
   (t) => [
     uniqueIndex("bookmark_user_url_idx").on(t.userId, t.url),
@@ -105,6 +108,7 @@ export const bookmark = pgTable(
       t.embedding.op("vector_cosine_ops"),
     ),
     index("bookmark_search_idx").using("gin", t.searchVector),
+    index("bookmark_link_checked_idx").on(t.linkCheckedAt),
   ],
 ).enableRLS();
 

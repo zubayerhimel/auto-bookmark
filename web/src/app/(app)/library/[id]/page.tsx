@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, BookOpenTextIcon, CircleAlertIcon, ExternalLinkIcon } from "lucide-react";
+import { ArrowLeftIcon, BookOpenTextIcon, CircleAlertIcon, ExternalLinkIcon, Link2OffIcon } from "lucide-react";
 import { BookmarkActions } from "@/components/bookmark-actions";
+import { CheckLinkButton } from "@/components/check-link-button";
 import { RowRibbon } from "@/components/row-ribbon";
 import { CategoryPicker } from "@/components/category-picker";
 import { RelatedShelf } from "@/components/related-shelf";
@@ -112,6 +113,30 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
             <blockquote className="mt-8 border-l-2 pl-4 text-base leading-[1.65] text-pretty break-words whitespace-pre-line sm:pl-5 sm:text-[1.0625rem]">
               {b.content.slice(0, 4000)}
             </blockquote>
+          ) : null}
+
+          {b.linkStatus === "dead" ? (
+            <Alert className="mt-8">
+              <Link2OffIcon />
+              <AlertTitle>The original page is gone</AlertTitle>
+              <AlertDescription>
+                <p>
+                  It answered &ldquo;not found&rdquo; when checked{b.linkCheckedAt ? ` ${timeAgo(b.linkCheckedAt)}` : ""}.
+                  {b.content ? " The text saved with this bookmark is still here." : ""}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {b.content && b.type !== "tweet" ? (
+                    <Button asChild size="sm">
+                      <Link href={`/library/${b.id}/read`}>
+                        <BookOpenTextIcon data-icon="inline-start" />
+                        Read saved copy
+                      </Link>
+                    </Button>
+                  ) : null}
+                  <CheckLinkButton id={b.id} />
+                </div>
+              </AlertDescription>
+            </Alert>
           ) : null}
 
           {b.status === "failed" ? (

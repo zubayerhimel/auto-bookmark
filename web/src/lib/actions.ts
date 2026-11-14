@@ -8,6 +8,7 @@ import { db, schema } from "@/db";
 import { libraryQuery, listBookmarks, saveBookmark } from "./bookmarks";
 import { findOrCreateCategory, pruneEmptyAiCategories, slugify, tidyName } from "./categories";
 import { importBookmarks, type ImportResult } from "./import";
+import { checkBookmarkLink } from "./link-check";
 import { drainPending, processBookmarks, recategorizeAll, recategorizeBookmarks, refreshSavedCopy } from "./pipeline";
 import { loadLibraryParams } from "./search-params";
 import { generateToken, hashToken, requireUser } from "./session";
@@ -89,6 +90,23 @@ export async function refreshSavedCopyAction(id: string): Promise<ActionState> {
   }
   refresh();
   return { ok: true };
+}
+
+/** Checks right away whether a bookmark's page still exists. */
+export async function checkLinkAction(id: string): Promise<ActionState> {
+  const user = await requireUser();
+  const [row] = await db
+    .select({ url: schema.bookmark.url })
+    .from(schema.bookmark)
+    .where(and(eq(schema.bookmark.id, id), eq(schema.bookmark.userId, user.id)))
+    .limit(1);
+  if (!row) return { error: "Bookmark not found." };
+  const health = await checkBookmarkLink(id, row.url);
+  refresh();
+  if (health === "unknown") {
+    return { error: "The site didn't give a clear answer (it may block automated checks). Try opening it yourself." };
+  }
+  return { ok: true, message: health === "ok" ? "The page is back up." : "Still gone." };
 }
 
 export async function reprocessBookmarkAction(id: string) {

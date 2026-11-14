@@ -159,6 +159,56 @@ async function fetchJson<T>(url: string, timeoutMs = 10_000): Promise<T | null> 
   }
 }
 
+// ---------- Link checks ----------
+
+export type LinkHealth = "ok" | "dead" | "unknown";
+
+async function oembedStatus(endpoint: string, timeoutMs: number, goneStatuses: number[]): Promise<LinkHealth> {
+  const res = await fetch(endpoint, { signal: AbortSignal.timeout(timeoutMs), headers: { "user-agent": USER_AGENT } });
+  await res.body?.cancel();
+  if (res.ok) return "ok";
+  return goneStatuses.includes(res.status) ? "dead" : "unknown";
+}
+
+/**
+ * Whether a saved page still exists. Only a clear "gone" counts as dead (404 or 410, or a domain
+ * that no longer resolves); blocks, rate limits and server errors are "unknown", since a site that
+ * dislikes bots often answers 403. YouTube and X answer 200 even for removed posts, so those are
+ * asked through oEmbed instead. Instagram and Facebook sit behind a login and can't be checked.
+ */
+export async function checkLink(url: string, timeoutMs = 10_000): Promise<LinkHealth> {
+  try {
+    if (socialSite(url)) return "unknown";
+    if (youtubeId(url)) {
+      // A removed or never-existing video is 400 (or 404); private and embed-blocked ones are 401/403.
+      return await oembedStatus(
+        `https://www.youtube.com/oembed?format=json&url=${encodeURIComponent(`https://www.youtube.com/watch?v=${youtubeId(url)}`)}`,
+        timeoutMs,
+        [400, 404],
+      );
+    }
+    const tweet = tweetMatch(url);
+    if (tweet) {
+      return await oembedStatus(
+        `https://publish.twitter.com/oembed?omit_script=1&url=${encodeURIComponent(`https://twitter.com/${tweet.handle}/status/${tweet.id}`)}`,
+        timeoutMs,
+        [404],
+      );
+    }
+    // HEAD is cheap but some servers mishandle it, so anything other than success is retried with GET.
+    let res = await safeFetch(url, { method: "HEAD" }, timeoutMs);
+    if (!res.ok) {
+      res = await safeFetch(url, { headers: { accept: "text/html,*/*" } }, timeoutMs);
+    }
+    await res.body?.cancel();
+    if (res.ok) return "ok";
+    return res.status === 404 || res.status === 410 ? "dead" : "unknown";
+  } catch (err) {
+    const code = (err as { code?: string }).code;
+    return code === "ENOTFOUND" ? "dead" : "unknown";
+  }
+}
+
 // ---------- Text helpers ----------
 
 export function clip(text: string | null | undefined, max = MAX_CONTENT_CHARS) {

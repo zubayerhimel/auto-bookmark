@@ -44,12 +44,15 @@ Sign-in uses the Clerk development instance. Its keys live in `web/.env.local`; 
    | `NEXT_PUBLIC_CLERK_SIGN_IN_URL`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-in`, `/sign-up` |
    | `DATABASE_URL` | Supabase, Connect, *Transaction pooler* string (port 6543) |
    | `OPENROUTER_API_KEY` | [openrouter.ai/keys](https://openrouter.ai/keys) |
+   | `CRON_SECRET` | Any long random string (e.g. `openssl rand -hex 32`); protects the daily job |
 
    The Vercel Supabase integration's `POSTGRES_URL` is used when `DATABASE_URL` is absent.
 
    `web/vercel.json` runs the server in `sin1` (Singapore) to sit next to a Supabase project in
    `ap-southeast-1`. Every query is a round trip to the database, so if your project is elsewhere,
-   change it to the [nearest Vercel region](https://vercel.com/docs/regions).
+   change it to the [nearest Vercel region](https://vercel.com/docs/regions). It also schedules
+   `/api/cron` once a day (03:30 UTC); Vercel sends `CRON_SECRET` with it, and without the variable
+   the job refuses to run.
 5. In Clerk, add your Vercel domain to the production instance's allowed origins if Clerk asks.
 6. In the extension's options, set the app address to your Vercel URL and connect again.
 
@@ -146,6 +149,17 @@ text is kept only if it isn't much shorter than the saved copy, so a page the ex
 while you were logged in isn't replaced by a sign-in wall. Pages saved before paragraphs were kept
 show their text run together, with a prompt to refresh.
 
+## Dead links
+
+A daily job (`/api/cron`) checks each saved link about once a month (`web/src/lib/link-check.ts`).
+Only a clear "gone" counts: a 404 or 410, or a domain that no longer exists. YouTube videos and X
+posts are checked through oEmbed, since those sites answer normally even for removed posts. Sites
+that block automated checks (403, rate limits) and Instagram or Facebook posts are left as they
+were. A dead link gets a **Link dead** marker in the library, and its page offers the saved copy
+and **Check again**. The same job also finishes any processing that was cut off.
+
+To run the job by hand: `curl -H "Authorization: Bearer $CRON_SECRET" <app address>/api/cron`.
+
 ## How it works
 
 1. **Save**: the extension captures what's on screen: tweet text and author on X, a single post's text and images on Instagram and Facebook, title,
@@ -177,6 +191,7 @@ show their text run together, with a prompt to refresh.
 | `web/src/lib/import-parse.ts`, `web/src/lib/import.ts` | Import: parsing exports in the browser; adding the links server-side |
 | `web/src/lib/share.ts`, `web/src/app/(app)/share/page.tsx` | Share target: saving links shared from a phone |
 | `web/src/lib/reader.ts`, `web/src/app/(app)/library/[id]/read/page.tsx` | Reader view of the saved copy |
+| `web/src/lib/link-check.ts`, `web/src/app/api/cron/route.ts` | Daily dead-link checks and processing sweep |
 | `web/src/lib/search.ts` | Hybrid semantic + keyword search |
 | `web/src/lib/actions.ts` | Server actions used by the UI |
 | `web/src/app/api/*` | Routes used by the extension |

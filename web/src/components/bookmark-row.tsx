@@ -1,3 +1,4 @@
+import { Link2OffIcon } from "lucide-react";
 import type { BookmarkListItem } from "@/lib/bookmarks";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
 import { Highlight } from "./highlight";
@@ -88,6 +89,12 @@ export function BookmarkRow({
               </span>
             </span>
             {item.author && item.type !== "web" ? <span className="truncate">{item.author}</span> : null}
+            {item.linkStatus === "dead" ? (
+              <span className="inline-flex items-center gap-1 font-medium text-danger" title="The original page is gone; the saved copy is still here.">
+                <Link2OffIcon aria-hidden className="size-3.5" />
+                Link dead
+              </span>
+            ) : null}
             {unread ? (
               <span className="inline-flex items-center gap-1.5 font-medium text-action">
                 <span aria-hidden className="size-1.5 rounded-full bg-current" />

@@ -19,6 +19,14 @@ export type SearchResult = {
 };
 
 const RRF_K = 60;
+// Cosine-distance cutoffs, tuned on OpenAI text-embedding-3-small: real matches land around
+// 0.5-0.75 and unrelated bookmarks around 0.8-0.9. Other embedding models may need different values.
+/** Semantic matches must be this close to the best match... */
+const SEMANTIC_WINDOW = 0.08;
+/** ...and no further than this, so a query with nothing related returns nothing semantic. */
+const SEMANTIC_MAX_DISTANCE = 0.8;
+/** Keyword hits that contain only some of the words must also be at least loosely related. */
+const PARTIAL_KEYWORD_MAX_DISTANCE = 0.82;
 
 function validDate(value: string | null | undefined) {
   if (!value) return null;
@@ -73,14 +81,19 @@ export async function searchBookmarks(
     return null;
   });
 
-  // Words joined with OR so a loosely remembered phrase still matches partially.
-  const keywordText = `${searchText} ${q}`;
-  const tsQuery = sql`nullif(replace(plainto_tsquery('english', ${keywordText})::text, ' & ', ' | '), '')::tsquery`;
+  // Bookmarks with every word rank first and are always kept, so exact names and IDs still match.
+  // Partial (any-word) matches are kept only when the embedding says they're related too.
+  const allWords = sql`nullif(plainto_tsquery('english', ${searchText})::text, '')::tsquery`;
+  const anyWord = sql`nullif(replace(plainto_tsquery('english', ${searchText})::text, ' & ', ' | '), '')::tsquery`;
+  const vector = embedding ? JSON.stringify(embedding) : null;
+  const partialFilter = vector
+    ? sql`(b.embedding <=> ${vector}::vector) <= ${PARTIAL_KEYWORD_MAX_DISTANCE}`
+    : sql`true`;
 
-  const semantic = embedding
+  const semantic = vector
     ? sql`
       sem as (
-        select b.id, b.embedding <=> ${JSON.stringify(embedding)}::vector as dist
+        select b.id, b.embedding <=> ${vector}::vector as dist
         from ${schema.bookmark} b
         where ${where} and b.embedding is not null
         order by dist
@@ -89,16 +102,20 @@ export async function searchBookmarks(
       sem_ranked as (
         select id, row_number() over (order by dist) as r
         from sem
-        where dist <= (select min(dist) from sem) + 0.15
+        where dist <= least((select min(dist) from sem) + ${SEMANTIC_WINDOW}, ${SEMANTIC_MAX_DISTANCE})
       ),`
     : sql`sem_ranked as (select null::uuid as id, null::bigint as r where false),`;
 
   const rows = await db.execute<{ id: string; score: number }>(sql`
     with ${semantic}
     kw as (
-      select b.id, row_number() over (order by ts_rank_cd(b.search_vector, ${tsQuery}) desc) as r
+      select b.id,
+             row_number() over (
+               order by (b.search_vector @@ ${allWords}) desc, ts_rank_cd(b.search_vector, ${anyWord}) desc
+             ) as r
       from ${schema.bookmark} b
-      where ${where} and b.search_vector @@ ${tsQuery}
+      where ${where} and b.search_vector @@ ${anyWord}
+        and (b.search_vector @@ ${allWords} or ${partialFilter})
       order by r
       limit 40
     )

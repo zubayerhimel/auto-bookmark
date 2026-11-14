@@ -64,7 +64,9 @@ To call a provider directly instead, set `AI_PROVIDER` to `openai` (`OPENAI_API_
 (`GOOGLE_GENERATIVE_AI_API_KEY`).
 
 Embeddings are stored as 1536-dimension vectors. If you switch embedding provider after saving
-bookmarks, use **Reprocess** on items (or re-save them) so search vectors stay comparable.
+bookmarks, use **Reprocess** on items (or re-save them) so search vectors stay comparable. Search's
+relevance cutoffs (top of `web/src/lib/search.ts`) are tuned for `text-embedding-3-small`; other
+embedding models may need different values.
 
 ### Security
 
@@ -113,7 +115,9 @@ button, then **Options**), then connect again. For local development that is `ht
    Text is embedded with pgvector and indexed for full-text search.
 3. **Search**: longer questions are first turned into a search plan (topic, content type,
    category, date range). Results combine semantic similarity and keyword matches with
-   reciprocal rank fusion, and matching words are highlighted.
+   reciprocal rank fusion, and matching words are highlighted. Semantic matches must be close to
+   the best match and under an absolute distance cutoff; keyword matches containing every word
+   rank first, and partial ones are kept only if they're also related in meaning.
 4. **Categories**: AI-created categories appear and disappear as needed. You can create,
    rename, describe, merge, or delete them, move any bookmark manually (the AI won't override
    that choice), or re-file the whole library after changing categories.

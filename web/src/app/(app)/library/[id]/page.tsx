@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, ChevronRightIcon, CircleAlertIcon, ExternalLinkIcon } from "lucide-react";
+import { ArrowLeftIcon, BookOpenTextIcon, CircleAlertIcon, ExternalLinkIcon } from "lucide-react";
 import { BookmarkActions } from "@/components/bookmark-actions";
 import { RowRibbon } from "@/components/row-ribbon";
 import { CategoryPicker } from "@/components/category-picker";
@@ -11,10 +11,10 @@ import { TypeIcon } from "@/components/type-icon";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { getBookmark, listCategoriesWithCounts, relatedBookmarks, type BookmarkListItem } from "@/lib/bookmarks";
 import { youtubeId } from "@/lib/extract";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
+import { readingMinutes } from "@/lib/reader";
 import { requireUser } from "@/lib/session";
 import { libraryHref } from "@/lib/search-params";
 
@@ -73,12 +73,23 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
                 {b.author ? <span>{b.author}</span> : null}
                 <span>Saved {timeAgo(b.createdAt)}</span>
               </p>
-              <Button asChild className="mt-5">
-                <a href={b.url} target="_blank" rel="noopener noreferrer">
-                  Open original
-                  <ExternalLinkIcon data-icon="inline-end" />
-                </a>
-              </Button>
+              <div className="mt-5 flex flex-wrap gap-2">
+                <Button asChild>
+                  <a href={b.url} target="_blank" rel="noopener noreferrer">
+                    Open original
+                    <ExternalLinkIcon data-icon="inline-end" />
+                  </a>
+                </Button>
+                {b.content && b.type !== "tweet" ? (
+                  <Button asChild variant="outline">
+                    <Link href={`/library/${b.id}/read`}>
+                      <BookOpenTextIcon data-icon="inline-start" />
+                      Read saved copy
+                      <span className="text-muted-foreground">· {readingMinutes(b.content)} min</span>
+                    </Link>
+                  </Button>
+                ) : null}
+              </div>
             </header>
           </div>
 
@@ -136,23 +147,6 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
                 <mark>{b.note}</mark>
               </p>
             </section>
-          ) : null}
-
-          {b.content && b.type !== "tweet" ? (
-            <Collapsible className="group/captured mt-8 max-w-[65ch]">
-              <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="-ml-2.5 text-muted-foreground">
-                  <ChevronRightIcon data-icon="inline-start" className="transition-transform duration-200 ease-out group-data-[state=open]/captured:rotate-90" />
-                  Text captured from the page
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <p className="mt-3 text-sm leading-[1.65] break-words whitespace-pre-line text-muted-foreground">
-                  {b.content.slice(0, 6000)}
-                  {b.content.length > 6000 ? "…" : ""}
-                </p>
-              </CollapsibleContent>
-            </Collapsible>
           ) : null}
         </div>
 

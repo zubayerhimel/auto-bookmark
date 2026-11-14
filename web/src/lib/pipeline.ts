@@ -40,6 +40,26 @@ async function refreshSearchVector(id: string) {
 }
 
 /**
+ * Fetches the page again for the reader view. The new text replaces the saved copy only when it's
+ * at least most of its length, so a copy the extension captured while logged in isn't swapped for
+ * a sign-in wall or a paywall teaser.
+ */
+export async function refreshSavedCopy(userId: string, id: string): Promise<"updated" | "kept"> {
+  const [b] = await db
+    .select({ url: schema.bookmark.url, content: schema.bookmark.content })
+    .from(schema.bookmark)
+    .where(and(eq(schema.bookmark.id, id), eq(schema.bookmark.userId, userId)))
+    .limit(1);
+  if (!b) throw new Error("Bookmark not found.");
+  const extracted = await extractFromUrl(b.url);
+  const fresh = extracted.content;
+  if (!fresh || fresh.length < (b.content?.length ?? 0) * 0.6) return "kept";
+  await db.update(schema.bookmark).set({ content: fresh }).where(eq(schema.bookmark.id, id));
+  await refreshSearchVector(id);
+  return "updated";
+}
+
+/**
  * Waiting to be processed: pending, or "processing" for so long that the job doing it must have
  * died (a serverless function hitting its time limit mid-import, say).
  */

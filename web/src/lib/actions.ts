@@ -8,7 +8,7 @@ import { db, schema } from "@/db";
 import { libraryQuery, listBookmarks, saveBookmark } from "./bookmarks";
 import { findOrCreateCategory, pruneEmptyAiCategories, slugify, tidyName } from "./categories";
 import { importBookmarks, type ImportResult } from "./import";
-import { drainPending, processBookmarks, recategorizeAll, recategorizeBookmarks } from "./pipeline";
+import { drainPending, processBookmarks, recategorizeAll, recategorizeBookmarks, refreshSavedCopy } from "./pipeline";
 import { loadLibraryParams } from "./search-params";
 import { generateToken, hashToken, requireUser } from "./session";
 
@@ -73,6 +73,22 @@ export async function deleteBookmarkAction(id: string) {
   await pruneEmptyAiCategories(user.id);
   refresh();
   redirect("/library");
+}
+
+/** Re-fetches the page for the reader view (see `refreshSavedCopy`). */
+export async function refreshSavedCopyAction(id: string): Promise<ActionState> {
+  const user = await requireUser();
+  let outcome: "updated" | "kept";
+  try {
+    outcome = await refreshSavedCopy(user.id, id);
+  } catch (err) {
+    return { error: err instanceof Error ? `Couldn't fetch the page: ${err.message}` : "Couldn't fetch the page." };
+  }
+  if (outcome === "kept") {
+    return { error: "The page now shows less than the saved copy (maybe a sign-in wall), so the saved copy was kept." };
+  }
+  refresh();
+  return { ok: true };
 }
 
 export async function reprocessBookmarkAction(id: string) {

@@ -137,6 +137,15 @@ Android apps put it inside `text`); other shared text, like a highlighted passag
 bookmark's note (`web/src/lib/share.ts`). Visits from another site only show a **Save** button
 instead of saving on their own. If the link is already saved, the page shows it instead.
 
+## Reader view
+
+Every saved page keeps its text, with paragraphs, headings and lists, and **Read saved copy** on a
+bookmark opens it as a clean reading page (`/library/<id>/read`). It's still there if the page
+changes, goes behind a paywall, or disappears. **Refresh from the page** fetches it again; the new
+text is kept only if it isn't much shorter than the saved copy, so a page the extension captured
+while you were logged in isn't replaced by a sign-in wall. Pages saved before paragraphs were kept
+show their text run together, with a prompt to refresh.
+
 ## How it works
 
 1. **Save**: the extension captures what's on screen: tweet text and author on X, a single post's text and images on Instagram and Facebook, title,
@@ -167,6 +176,7 @@ instead of saving on their own. If the link is already saved, the page shows it 
 | `web/src/lib/pipeline.ts` | Background processing (claims each bookmark atomically; `drainPending` resumes waiting ones) and re-categorization |
 | `web/src/lib/import-parse.ts`, `web/src/lib/import.ts` | Import: parsing exports in the browser; adding the links server-side |
 | `web/src/lib/share.ts`, `web/src/app/(app)/share/page.tsx` | Share target: saving links shared from a phone |
+| `web/src/lib/reader.ts`, `web/src/app/(app)/library/[id]/read/page.tsx` | Reader view of the saved copy |
 | `web/src/lib/search.ts` | Hybrid semantic + keyword search |
 | `web/src/lib/actions.ts` | Server actions used by the UI |
 | `web/src/app/api/*` | Routes used by the extension |

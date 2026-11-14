@@ -177,6 +177,61 @@ function parseDate(value: string | null | undefined) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+const BLOCK_TAGS = new Set([
+  "address", "article", "aside", "blockquote", "dd", "details", "div", "dl", "dt", "figcaption", "figure",
+  "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6", "header", "hr", "li", "main", "nav", "ol", "p",
+  "pre", "section", "summary", "table", "tr", "ul",
+]);
+const SKIP_TAGS = new Set(["script", "style", "noscript", "template", "svg", "button", "video", "audio"]);
+
+type TextNodeLike = { nodeType: number; textContent: string | null; childNodes: ArrayLike<TextNodeLike>; tagName?: string };
+
+/**
+ * Text of an element with its structure kept as plain text: one paragraph per block (separated by
+ * a blank line) and "• " before list items. textContent alone runs headings into the next paragraph.
+ */
+export function readableText(root: TextNodeLike | null | undefined) {
+  if (!root) return null;
+  const blocks: string[] = [];
+  let line = "";
+  let bullet = false;
+  const flush = () => {
+    const text = line.replace(/\s+/g, " ").trim();
+    line = "";
+    if (!text) return;
+    blocks.push(bullet ? `• ${text}` : text);
+    bullet = false;
+  };
+  const walk = (node: TextNodeLike) => {
+    for (const child of Array.from(node.childNodes)) {
+      if (child.nodeType === 3) {
+        line += child.textContent ?? "";
+      } else if (child.nodeType === 1) {
+        const tag = child.tagName?.toLowerCase() ?? "";
+        if (SKIP_TAGS.has(tag)) continue;
+        if (tag === "br") {
+          flush();
+        } else if (tag === "td" || tag === "th") {
+          line += " ";
+          walk(child);
+          line += " ";
+        } else if (BLOCK_TAGS.has(tag)) {
+          flush();
+          if (tag === "li") bullet = true;
+          walk(child);
+          flush();
+          if (tag === "li") bullet = false;
+        } else {
+          walk(child);
+        }
+      }
+    }
+  };
+  walk(root);
+  flush();
+  return blocks.join("\n\n") || null;
+}
+
 // ---------- Generic web pages ----------
 
 export function extractFromHtml(url: string, html: string): Extracted {
@@ -211,6 +266,13 @@ export function extractFromHtml(url: string, html: string): Extracted {
   } catch {
     article = null;
   }
+  let text: string | null = null;
+  if (article?.content) {
+    const parsed = parseHTML(`<!doctype html><html><body>${article.content}</body></html>`);
+    text = readableText(parsed.document.body as unknown as TextNodeLike);
+  }
+  // Readability empties the document as it goes, so the fallback reads what's left of the body.
+  text ||= readableText(document.body as unknown as TextNodeLike) ?? article?.textContent ?? null;
 
   return {
     type: "web",
@@ -220,7 +282,7 @@ export function extractFromHtml(url: string, html: string): Extracted {
     siteName: siteName ?? article?.siteName ?? new URL(url).hostname.replace(/^www\./, ""),
     imageUrl,
     publishedAt,
-    content: clip(article?.textContent ?? document.body?.textContent ?? null),
+    content: clip(text),
   };
 }
 

@@ -2,16 +2,17 @@ import type { Metadata } from "next";
 import { TagsIcon } from "lucide-react";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { CategoriesIntro, NewCategoryCard } from "@/components/categories-header";
-import { CategoryItem } from "@/components/category-forms";
+import { CategoryList } from "@/components/category-forms";
 import { CategoryShelf } from "@/components/category-shelf";
-import { listCategoriesWithCounts } from "@/lib/bookmarks";
+import { libraryStats, listCategoriesWithCounts } from "@/lib/bookmarks";
 import { requireUser } from "@/lib/session";
 
 export const metadata: Metadata = { title: "Categories" };
 
 export default async function CategoriesPage() {
   const user = await requireUser();
-  const categories = await listCategoriesWithCounts(user.id);
+  const [categories, stats] = await Promise.all([listCategoriesWithCounts(user.id), libraryStats(user.id)]);
+  const uncategorized = { count: stats.uncategorized, busy: stats.uncategorizedBusy };
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -37,21 +38,10 @@ export default async function CategoriesPage() {
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
-      ) : (
-        <>
-        <h2 id="all-categories" className="mt-12 scroll-mt-6 text-lg font-semibold tracking-tight">Your categories</h2>
-        <p className="mt-1 text-sm text-ink-faint">Empty categories the AI created are removed on their own.</p>
-        <ul className="mt-4 flex flex-col gap-2.5">
-          {categories.map((c) => (
-            <CategoryItem
-              key={c.id}
-              category={c}
-              others={categories.filter((o) => o.id !== c.id).map((o) => ({ id: o.id, name: o.name }))}
-            />
-          ))}
-        </ul>
-        </>
-      )}
+      ) : null}
+      {categories.length || uncategorized.count ? (
+        <CategoryList categories={categories} uncategorized={uncategorized} />
+      ) : null}
     </div>
   );
 }

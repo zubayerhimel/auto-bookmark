@@ -243,6 +243,17 @@ export async function deleteCategoryAction(id: string, refile: boolean) {
   refresh();
 }
 
+/** Deletes every bookmark that has no category: the ones listed under "Uncategorized". */
+export async function deleteUncategorizedAction(): Promise<{ deleted: number }> {
+  const user = await requireUser();
+  const deleted = await db
+    .delete(schema.bookmark)
+    .where(and(eq(schema.bookmark.userId, user.id), isNull(schema.bookmark.categoryId)))
+    .returning({ id: schema.bookmark.id });
+  refresh();
+  return { deleted: deleted.length };
+}
+
 export async function mergeCategoryAction(fromId: string, intoId: string) {
   const user = await requireUser();
   if (fromId === intoId) return;

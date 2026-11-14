@@ -360,6 +360,8 @@ export const libraryStats = cache(async (userId: string) => {
     .select({
       total: sql<number>`count(*)::int`,
       uncategorized: sql<number>`count(*) filter (where ${schema.bookmark.categoryId} is null)::int`,
+      /** Uncategorized only because the AI hasn't got to them yet. */
+      uncategorizedBusy: sql<number>`count(*) filter (where ${schema.bookmark.categoryId} is null and ${schema.bookmark.status} in ('pending','processing'))::int`,
       busy: sql<number>`count(*) filter (where ${schema.bookmark.status} in ('pending','processing'))::int`,
       // Ready but not yet filed: the AI is choosing a category (e.g. after their category was deleted).
       filing: sql<number>`count(*) filter (where ${schema.bookmark.status} = 'ready' and ${schema.bookmark.categoryId} is null and not ${schema.bookmark.categoryLocked})::int`,

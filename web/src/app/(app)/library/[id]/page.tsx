@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { cache, Suspense } from "react";
 import { notFound } from "next/navigation";
-import { ArrowLeftIcon, BookOpenTextIcon, CircleAlertIcon, ExternalLinkIcon, Link2OffIcon } from "lucide-react";
+import { ArrowLeftIcon, BookOpenTextIcon, CircleAlertIcon, CopyIcon, ExternalLinkIcon, Link2OffIcon } from "lucide-react";
 import { BookmarkActions } from "@/components/bookmark-actions";
 import { CheckLinkButton } from "@/components/check-link-button";
 import { RowRibbon } from "@/components/row-ribbon";
@@ -14,7 +14,7 @@ import { TagEditor } from "@/components/tag-editor";
 import { TypeIcon } from "@/components/type-icon";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { getBookmark, listCategoriesWithCounts, relatedBookmarks, type BookmarkListItem } from "@/lib/bookmarks";
+import { findSimilarBookmarks, getBookmark, listCategoriesWithCounts, relatedBookmarks, type BookmarkListItem } from "@/lib/bookmarks";
 import { youtubeId } from "@/lib/extract";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
 import { readingMinutes } from "@/lib/reader";
@@ -37,6 +37,7 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
   const [row, categories] = await Promise.all([loadBookmark(user.id, id), listCategoriesWithCounts(user.id)]);
   if (!row) notFound();
   const { bookmark: b, category } = row;
+  const similar = b.type === "web" ? await findSimilarBookmarks(user.id, b.url).catch(() => []) : [];
 
   const busy = b.status === "pending" || b.status === "processing";
   const filing = b.status === "ready" && !b.categoryId && !b.categoryLocked;
@@ -93,6 +94,23 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
                   </Button>
                 ) : null}
               </div>
+              {similar.length ? (
+                <div className="mt-5 flex gap-2 text-sm text-muted-foreground">
+                  <CopyIcon className="mt-0.5 size-4 shrink-0" aria-hidden />
+                  <p className="min-w-0">
+                    Looks like you saved this page before:{" "}
+                    {similar.map((s, i) => (
+                      <span key={s.id}>
+                        {i ? ", " : null}
+                        <Link href={`/library/${s.id}`} className="break-words text-foreground underline underline-offset-2 hover:text-action">
+                          {s.title || s.url}
+                        </Link>{" "}
+                        <span className="whitespace-nowrap">({timeAgo(s.createdAt)})</span>
+                      </span>
+                    ))}
+                  </p>
+                </div>
+              ) : null}
             </header>
           </div>
 

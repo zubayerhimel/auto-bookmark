@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { and, asc, desc, eq, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, isNull, ne, sql, type AnyColumn, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { BookmarkType } from "@/db/schema";
 import { UserError } from "./errors";
@@ -96,8 +96,41 @@ export async function saveBookmark(userId: string, input: SaveInput) {
         createdAt: sql`now()`,
       },
     })
-    .returning({ id: schema.bookmark.id, status: schema.bookmark.status, url: schema.bookmark.url });
+    .returning({
+      id: schema.bookmark.id,
+      status: schema.bookmark.status,
+      url: schema.bookmark.url,
+      // xmax is set on a row that ON CONFLICT updated, and 0 on a fresh insert.
+      existed: sql<boolean>`(not (xmax = 0))`,
+    });
   return row;
+}
+
+/** Scheme, "www.", query and trailing slash stripped: links that only differ there are likely the same page. */
+function pageKey(url: SQL | AnyColumn) {
+  return sql`regexp_replace(regexp_replace(split_part(${url}, '?', 1), '^https?://(www\\.)?', ''), '/+$', '')`;
+}
+
+/**
+ * Other saved web pages that look like the same page as `url`, e.g. one with tracking or a
+ * different scheme. Pages told apart only by their query (`item?id=1` vs `item?id=2`) don't count.
+ */
+export async function findSimilarBookmarks(userId: string, url: string, limit = 3) {
+  const target = sql`${url}::text`;
+  return db
+    .select({ id: schema.bookmark.id, url: schema.bookmark.url, title: schema.bookmark.title, createdAt: schema.bookmark.createdAt })
+    .from(schema.bookmark)
+    .where(
+      and(
+        eq(schema.bookmark.userId, userId),
+        eq(schema.bookmark.type, "web"),
+        ne(schema.bookmark.url, url),
+        sql`${pageKey(schema.bookmark.url)} = ${pageKey(target)}`,
+        sql`(strpos(${schema.bookmark.url}, '?') = 0 or strpos(${target}, '?') = 0)`,
+      ),
+    )
+    .orderBy(desc(schema.bookmark.createdAt))
+    .limit(limit);
 }
 
 // ---------- Reads ----------

@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { libraryQuery, listBookmarks, saveBookmark } from "./bookmarks";
+import { findSimilarBookmarks, libraryQuery, listBookmarks, saveBookmark } from "./bookmarks";
 import { findOrCreateCategory, pruneEmptyAiCategories, slugify, tidyName } from "./categories";
 import { importBookmarks, type ImportResult } from "./import";
 import { userMessage } from "./errors";
@@ -44,11 +44,19 @@ export async function addBookmarkAction(_prev: ActionState, formData: FormData):
   try {
     const saved = await saveBookmark(user.id, { url });
     after(() => processBookmarks([saved.id]));
+    refresh();
+    if (saved.existed) return { ok: true, message: "Already in your library. Moved it to the top and refreshing it." };
+    const [similar] = await findSimilarBookmarks(user.id, saved.url, 1).catch(() => []);
+    if (similar) {
+      return {
+        ok: true,
+        message: `Saved. Looks like you already have this page: “${similar.title || similar.url}”.`,
+      };
+    }
   } catch (err) {
     console.error("[add] save failed", err);
     return { error: userMessage(err, "That link couldn't be saved. Try again.") };
   }
-  refresh();
   return { ok: true, message: "Saved. Summarizing and filing it now." };
 }
 

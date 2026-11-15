@@ -79,6 +79,8 @@ export const bookmark = pgTable(
     }),
     /** True once the user picks a category by hand; AI re-runs leave it alone. */
     categoryLocked: boolean("category_locked").notNull().default(false),
+    /** True once the user edits the tags; AI re-runs keep them as they are. */
+    tagsLocked: boolean("tags_locked").notNull().default(false),
     status: text("status", {
       enum: ["pending", "processing", "ready", "failed"],
     })

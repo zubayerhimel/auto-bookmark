@@ -10,9 +10,10 @@ import { findOrCreateCategory, pruneEmptyAiCategories, slugify, tidyName } from 
 import { importBookmarks, type ImportResult } from "./import";
 import { userMessage } from "./errors";
 import { checkBookmarkLink } from "./link-check";
-import { drainPending, processBookmarks, recategorizeAll, recategorizeBookmarks, refreshSavedCopy } from "./pipeline";
+import { drainPending, processBookmarks, recategorizeAll, recategorizeBookmarks, refreshSavedCopy, refreshSearchVector } from "./pipeline";
 import { loadLibraryParams } from "./search-params";
 import { generateToken, hashToken, requireUser } from "./session";
+import { cleanTags } from "./tags";
 
 export type ActionState = { ok?: boolean; error?: string; message?: string } | null;
 
@@ -117,6 +118,40 @@ export async function reprocessBookmarkAction(id: string) {
   await ownBookmark(user.id, id);
   await db.update(schema.bookmark).set({ status: "pending", error: null }).where(eq(schema.bookmark.id, id));
   after(() => processBookmarks([id]));
+  refresh();
+}
+
+/** Saves the user's note on a bookmark; an empty note removes it. */
+export async function setBookmarkNoteAction(id: string, note: string) {
+  const user = await requireUser();
+  const updated = await db
+    .update(schema.bookmark)
+    .set({ note: note.trim().slice(0, 5000) || null })
+    .where(and(eq(schema.bookmark.id, id), eq(schema.bookmark.userId, user.id)))
+    .returning({ id: schema.bookmark.id });
+  if (!updated.length) throw new Error("Bookmark not found.");
+  await refreshSearchVector(id);
+  refresh();
+}
+
+/**
+ * Replaces a bookmark's tags with the user's own. `tags` null hands them back to the AI, which
+ * tags it again.
+ */
+export async function setBookmarkTagsAction(id: string, tags: string[] | null) {
+  const user = await requireUser();
+  const set =
+    tags === null
+      ? { tagsLocked: false, status: "pending" as const, error: null }
+      : { tags: cleanTags(tags), tagsLocked: true };
+  const updated = await db
+    .update(schema.bookmark)
+    .set(set)
+    .where(and(eq(schema.bookmark.id, id), eq(schema.bookmark.userId, user.id)))
+    .returning({ id: schema.bookmark.id });
+  if (!updated.length) throw new Error("Bookmark not found.");
+  if (tags === null) after(() => processBookmarks([id]));
+  else await refreshSearchVector(id);
   refresh();
 }
 

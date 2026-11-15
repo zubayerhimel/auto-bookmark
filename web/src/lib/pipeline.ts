@@ -33,7 +33,7 @@ async function aiStep<T>(task: () => Promise<T>): Promise<T> {
   }
 }
 
-async function refreshSearchVector(id: string) {
+export async function refreshSearchVector(id: string) {
   await db.execute(sql`
     update ${schema.bookmark} set search_vector =
       setweight(to_tsvector('english', coalesce(title, '')), 'A') ||
@@ -135,9 +135,12 @@ export async function processBookmark(id: string) {
 
     // Keep the page's own title for articles and videos; social posts get the AI's descriptive title.
     const title = social || !item.title ? analysis.title : item.title;
-    // The first time through, keep tags it arrived with (folder names from an import) ahead of the AI's.
+    // Tags the user edited stay as they are. The first time through, keep tags it arrived with
+    // (folder names from an import) ahead of the AI's.
     const kept = b.processedAt ? [] : b.tags;
-    const tags = [...new Set([...kept, ...analysis.tags].map((t) => t.toLowerCase().trim()).filter(Boolean))].slice(0, 10);
+    const tags = b.tagsLocked
+      ? b.tags
+      : [...new Set([...kept, ...analysis.tags].map((t) => t.toLowerCase().trim()).filter(Boolean))].slice(0, 10);
 
     const embedding = await aiStep(() => embedText(
       [

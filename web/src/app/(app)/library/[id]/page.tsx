@@ -7,17 +7,17 @@ import { BookmarkActions } from "@/components/bookmark-actions";
 import { CheckLinkButton } from "@/components/check-link-button";
 import { RowRibbon } from "@/components/row-ribbon";
 import { CategoryPicker } from "@/components/category-picker";
+import { NoteEditor } from "@/components/note-editor";
 import { RelatedShelf } from "@/components/related-shelf";
+import { TagEditor } from "@/components/tag-editor";
 import { TypeIcon } from "@/components/type-icon";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { getBookmark, listCategoriesWithCounts, relatedBookmarks, type BookmarkListItem } from "@/lib/bookmarks";
 import { youtubeId } from "@/lib/extract";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
 import { readingMinutes } from "@/lib/reader";
 import { requireUser } from "@/lib/session";
-import { libraryHref } from "@/lib/search-params";
 
 const loadBookmark = cache(getBookmark);
 
@@ -165,14 +165,7 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
             </section>
           ) : null}
 
-          {b.note ? (
-            <section className="mt-8">
-              <h2 className="text-sm font-semibold text-muted-foreground">What you highlighted</h2>
-              <p className="mt-2.5 max-w-[65ch] leading-[1.65]">
-                <mark>{b.note}</mark>
-              </p>
-            </section>
-          ) : null}
+          <NoteEditor key={b.note ?? ""} bookmarkId={b.id} note={b.note} />
         </div>
 
         <aside className="flex flex-col gap-8 lg:sticky lg:top-6 lg:self-start lg:pt-2">
@@ -182,20 +175,7 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
             currentId={b.categoryId}
             locked={b.categoryLocked}
           />
-          {b.tags.length ? (
-            <div>
-              <h2 className="text-sm font-medium">Tags</h2>
-              <ul className="mt-2 flex flex-wrap gap-1.5">
-                {b.tags.map((t) => (
-                  <li key={t}>
-                    <Badge asChild variant="secondary">
-                      <Link href={libraryHref("/library", { q: t })}>#{t}</Link>
-                    </Badge>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
+          <TagEditor bookmarkId={b.id} tags={b.tags} locked={b.tagsLocked} />
           <BookmarkActions id={b.id} read={b.readAt !== null} ready={b.status === "ready"} />
         </aside>
       </div>

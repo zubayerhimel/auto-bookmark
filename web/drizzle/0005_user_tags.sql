@@ -1,0 +1,1 @@
+ALTER TABLE "bookmark" ADD COLUMN "tags_locked" boolean DEFAULT false NOT NULL;

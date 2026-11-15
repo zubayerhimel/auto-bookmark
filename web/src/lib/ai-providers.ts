@@ -1,4 +1,4 @@
-export const AI_PROVIDERS = ["openai", "anthropic", "google", "openrouter"] as const;
+export const AI_PROVIDERS = ["openai", "anthropic", "google", "groq", "openrouter"] as const;
 export type AiProvider = (typeof AI_PROVIDERS)[number];
 
 export type ProviderInfo = {
@@ -37,6 +37,14 @@ export const PROVIDERS: Record<AiProvider, ProviderInfo> = {
     embeddingModel: "gemini-embedding-001",
     keyPlaceholder: "AIza…",
     keysUrl: "https://aistudio.google.com/apikey",
+  },
+  groq: {
+    label: "Groq",
+    name: "Groq",
+    defaultModel: "openai/gpt-oss-120b",
+    embeddingModel: null,
+    keyPlaceholder: "gsk_…",
+    keysUrl: "https://console.groq.com/keys",
   },
   openrouter: {
     label: "OpenRouter (any model)",

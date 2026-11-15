@@ -60,8 +60,8 @@ export function AiKeyForm({ saved }: { saved: Saved }) {
           </Select>
           {info.embeddingModel ? null : (
             <FieldDescription>
-              Claude has no embedding model, so search matches words only, not meaning. Choose OpenRouter to use Claude
-              with meaning-based search.
+              {info.name} has no embedding model, so search matches words only, not meaning. For meaning-based search,
+              choose OpenAI, Google or OpenRouter (which also runs Claude and many open models).
             </FieldDescription>
           )}
         </Field>

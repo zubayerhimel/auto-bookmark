@@ -1,4 +1,4 @@
-import { Link2OffIcon } from "lucide-react";
+import { CheckIcon, Link2OffIcon } from "lucide-react";
 import type { BookmarkListItem } from "@/lib/bookmarks";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
 import { Highlight } from "./highlight";
@@ -25,11 +25,14 @@ export function BookmarkRow({
   item,
   terms,
   showUnread = true,
+  selection,
 }: {
   item: Item;
   terms?: string[];
   /** Off on the To read list, where every card is unread anyway. */
   showUnread?: boolean;
+  /** In select mode, clicking the card toggles it instead of opening it. */
+  selection?: { selected: boolean; onToggle: (range: boolean) => void };
 }) {
   const busy = item.status === "pending" || item.status === "processing";
   const filing = item.status === "ready" && !item.categoryId && !item.categoryLocked;
@@ -41,7 +44,10 @@ export function BookmarkRow({
   const unread = showUnread && !item.readAt && item.status === "ready";
 
   return (
-    <li className="group relative rounded-2xl border border-rule bg-card transition-[border-color] duration-150 ease-out hover:border-ink/25">
+    <li
+      data-selected={selection?.selected || undefined}
+      className="group relative rounded-2xl border border-rule bg-card transition-[border-color,box-shadow] duration-150 ease-out hover:border-ink/25 data-selected:border-action data-selected:ring-1 data-selected:ring-action"
+    >
       {/* The ribbon sits a little tucked under the top edge and pulls down on hover. */}
       <span aria-hidden className="pointer-events-none absolute -top-px left-4 h-11 w-2.5 overflow-hidden sm:left-5">
         <RowRibbon
@@ -109,7 +115,25 @@ export function BookmarkRow({
           </p>
         </div>
         {preview ? <Thumb src={preview} className="hidden aspect-[16/10] w-32 shrink-0 self-start sm:block" /> : null}
+        {selection ? (
+          <span
+            aria-hidden
+            className="grid size-5 shrink-0 place-items-center self-center rounded-md border border-ink/30 bg-card text-action-foreground transition-colors duration-150 ease-out group-data-selected:border-action group-data-selected:bg-action"
+          >
+            <CheckIcon className="size-3.5 scale-75 opacity-0 transition-[opacity,scale] duration-150 ease-out group-data-selected:scale-100 group-data-selected:opacity-100" />
+          </span>
+        ) : null}
       </div>
+      {selection ? (
+        <button
+          type="button"
+          role="checkbox"
+          aria-checked={selection.selected}
+          aria-label={`Select ${title}`}
+          onClick={(e) => selection.onToggle(e.shiftKey)}
+          className="absolute inset-0 z-10 cursor-pointer rounded-2xl focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        />
+      ) : null}
     </li>
   );
 }

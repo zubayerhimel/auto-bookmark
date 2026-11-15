@@ -12,7 +12,7 @@ import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { markAllReadAction, retryFailedAction } from "@/lib/actions";
-import { getCategoryBySlug, libraryQuery, listBookmarks } from "@/lib/bookmarks";
+import { getCategoryBySlug, libraryQuery, listBookmarks, listCategoriesWithCounts } from "@/lib/bookmarks";
 import { libraryHref, loadLibraryParams } from "@/lib/search-params";
 import { requireUser } from "@/lib/session";
 
@@ -43,9 +43,10 @@ export default async function LibraryPage({ searchParams }: PageProps) {
   const unread = view === "unread";
   const query = libraryQuery(params);
 
-  const [category, { items, nextCursor }] = await Promise.all([
+  const [category, { items, nextCursor }, categories] = await Promise.all([
     query.categorySlug ? getCategoryBySlug(user.id, query.categorySlug) : null,
     listBookmarks(user.id, query),
+    listCategoriesWithCounts(user.id),
   ]);
   if (query.categorySlug && !category) notFound();
   const failed = items.filter((i) => i.status === "failed").length;
@@ -114,20 +115,6 @@ export default async function LibraryPage({ searchParams }: PageProps) {
             </li>
           </ul>
         </nav>
-
-        {items.length > 0 ? (
-          <div className="mt-3 flex items-center justify-end gap-2">
-            {unread && !slug && !type ? (
-              <form action={markAllReadAction}>
-                <Button type="submit" variant="ghost" size="sm" className="text-ink-soft">
-                  <CheckCheckIcon data-icon="inline-start" />
-                  Mark all as read
-                </Button>
-              </form>
-            ) : null}
-            <SortMenu />
-          </div>
-        ) : null}
 
         {failed > 0 ? (
           <Alert variant="destructive" className="mt-4">
@@ -200,6 +187,20 @@ export default async function LibraryPage({ searchParams }: PageProps) {
             nextCursor={nextCursor}
             filters={filters}
             showUnread={!unread}
+            categories={categories.map(({ id, name, color }) => ({ id, name, color }))}
+            toolbar={
+              <>
+                {unread && !slug && !type ? (
+                  <form action={markAllReadAction}>
+                    <Button type="submit" variant="ghost" size="sm" className="text-ink-soft">
+                      <CheckCheckIcon data-icon="inline-start" />
+                      Mark all as read
+                    </Button>
+                  </form>
+                ) : null}
+                <SortMenu />
+              </>
+            }
           />
         )}
       </SearchPanel>

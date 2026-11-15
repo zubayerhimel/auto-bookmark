@@ -3,7 +3,7 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, isNull, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { libraryQuery, listBookmarks, saveBookmark } from "./bookmarks";
 import { findOrCreateCategory, pruneEmptyAiCategories, slugify, tidyName } from "./categories";
@@ -214,6 +214,58 @@ export async function setBookmarkCategoryAction(id: string, choice: string) {
     .where(eq(schema.bookmark.id, id));
   await pruneEmptyAiCategories(user.id);
   refresh();
+}
+
+export type BulkOperation =
+  | { kind: "read" }
+  | { kind: "unread" }
+  | { kind: "delete" }
+  | { kind: "move"; categoryId: string };
+
+const MAX_BULK = 500;
+
+/** Applies one change to many of the user's bookmarks at once (the library's selection bar). */
+export async function bulkBookmarksAction(ids: string[], op: BulkOperation): Promise<{ count: number }> {
+  const user = await requireUser();
+  const valid = [...new Set(ids)].filter((id) => /^[0-9a-f-]{36}$/i.test(id)).slice(0, MAX_BULK);
+  if (!valid.length) return { count: 0 };
+  const mine = and(eq(schema.bookmark.userId, user.id), inArray(schema.bookmark.id, valid));
+  const returning = { id: schema.bookmark.id };
+
+  let rows: { id: string }[];
+  switch (op.kind) {
+    case "read":
+    case "unread":
+      rows = await db
+        .update(schema.bookmark)
+        .set({ readAt: op.kind === "read" ? new Date() : null })
+        .where(mine)
+        .returning(returning);
+      break;
+    case "delete":
+      rows = await db.delete(schema.bookmark).where(mine).returning(returning);
+      await pruneEmptyAiCategories(user.id);
+      break;
+    case "move": {
+      const [cat] = await db
+        .select({ id: schema.category.id })
+        .from(schema.category)
+        .where(and(eq(schema.category.id, op.categoryId), eq(schema.category.userId, user.id)))
+        .limit(1);
+      if (!cat) throw new Error("Category not found.");
+      rows = await db
+        .update(schema.bookmark)
+        .set({ categoryId: cat.id, categoryLocked: true })
+        .where(mine)
+        .returning(returning);
+      await pruneEmptyAiCategories(user.id);
+      break;
+    }
+    default:
+      throw new Error("Unknown action.");
+  }
+  refresh();
+  return { count: rows.length };
 }
 
 // ---------- Categories ----------

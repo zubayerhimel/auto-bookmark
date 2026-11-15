@@ -14,15 +14,17 @@ import {
   StarIcon,
   SunIcon,
   TagsIcon,
+  XIcon,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { toast } from "sonner";
 import type { BookmarkType } from "@/db/schema";
 import { addBookmarkAction } from "@/lib/actions";
 import { isEditableTarget, isModShortcut, isSlash } from "@/lib/keyboard";
 import { libraryHref } from "@/lib/search-params";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -33,7 +35,10 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import { Kbd } from "@/components/ui/kbd";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
+import { LogoMark } from "./logo";
 import { Shortcut } from "./shortcut";
 import { TypeIcon } from "./type-icon";
 
@@ -97,6 +102,70 @@ function matches(query: string, ...fields: string[]) {
   return !q || fields.some((f) => f.toLowerCase().includes(q));
 }
 
+/** Small bordered tile holding a row's icon; lights up with the highlighted row. */
+function ItemIcon({ children, className }: { children: ReactNode; className?: string }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "flex size-7 shrink-0 items-center justify-center rounded-md border bg-muted/50 text-muted-foreground group-data-selected/command-item:bg-background group-data-selected/command-item:text-foreground",
+        className,
+      )}
+    >
+      {children}
+    </span>
+  );
+}
+
+function ItemText({ title, detail }: { title: ReactNode; detail?: ReactNode }) {
+  return (
+    <span className="flex min-w-0 flex-1 flex-col">
+      <span className="truncate">{title}</span>
+      {detail ? <span className="truncate text-xs text-muted-foreground">{detail}</span> : null}
+    </span>
+  );
+}
+
+function SearchSkeleton() {
+  return (
+    <div className="flex flex-col">
+      <span role="status" className="sr-only">
+        Searching
+      </span>
+      {["w-3/4", "w-1/2", "w-2/3"].map((width) => (
+        <div key={width} aria-hidden className="flex h-12 items-center gap-3 px-2">
+          <Skeleton className="size-7 rounded-md" />
+          <div className="flex flex-1 flex-col gap-1.5">
+            <Skeleton className={cn("h-3", width)} />
+            <Skeleton className="h-2.5 w-1/4" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function KeyHint({ keys, label }: { keys: string[]; label: string }) {
+  return (
+    <span className="flex items-center gap-1.5">
+      <span className="flex gap-0.5">
+        {keys.map((k) => (
+          <Kbd key={k}>{k}</Kbd>
+        ))}
+      </span>
+      {label}
+    </span>
+  );
+}
+
+/** What Enter does for the highlighted row, shown in the footer. */
+function enterLabel(value: string) {
+  if (value.startsWith("save")) return "Save";
+  if (value.startsWith("theme")) return "Apply";
+  if (value.startsWith("bookmark") || value === "all-results") return "Open";
+  return "Go";
+}
+
 export function CommandPalette({ categories }: { categories: Cat[] }) {
   const router = useRouter();
   const { theme, setTheme } = useTheme();
@@ -106,6 +175,7 @@ export function CommandPalette({ categories }: { categories: Cat[] }) {
   const [selected, setSelected] = useState("");
   const [shown, setShown] = useState<SearchState | null>(null);
   const [saving, startSaving] = useTransition();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const trimmed = query.trim();
   const searching = trimmed.length >= 2;
@@ -201,19 +271,33 @@ export function CommandPalette({ categories }: { categories: Cat[] }) {
     >
       <Command shouldFilter={false} loop value={selected} onValueChange={setSelected}>
         <CommandInput
+          ref={inputRef}
           value={query}
           onValueChange={setQuery}
           placeholder="Search bookmarks, jump to a page, or paste a link"
-        />
+        >
+          {query ? (
+            <Button
+              variant="ghost"
+              size="icon-xs"
+              aria-label="Clear search"
+              onClick={() => {
+                setQuery("");
+                inputRef.current?.focus();
+              }}
+            >
+              <XIcon />
+            </Button>
+          ) : null}
+        </CommandInput>
         <CommandList className="max-h-[min(26rem,60vh)]">
           {link ? (
             <CommandGroup heading="Save">
               <CommandItem value="save-link" disabled={saving} onSelect={() => save(link)}>
-                {saving ? <Spinner /> : <PlusIcon />}
-                <span className="min-w-0 truncate">
-                  {saving ? "Saving " : "Save "}
-                  <span className="font-medium">{hostOf(link)}</span>
-                </span>
+                <ItemIcon className="border-transparent bg-primary text-primary-foreground group-data-selected/command-item:text-primary-foreground">
+                  {saving ? <Spinner /> : <PlusIcon />}
+                </ItemIcon>
+                <ItemText title={saving ? "Saving to your library…" : "Save to your library"} detail={hostOf(link)} />
               </CommandItem>
             </CommandGroup>
           ) : null}
@@ -221,36 +305,38 @@ export function CommandPalette({ categories }: { categories: Cat[] }) {
           {searching && !link ? (
             <CommandGroup heading="Bookmarks">
               {pending ? (
-                <CommandItem value="searching" disabled>
-                  <Spinner />
-                  Searching
-                </CommandItem>
+                <SearchSkeleton />
               ) : current?.error ? (
                 <CommandItem value="search-error" disabled>
-                  <CircleAlertIcon />
-                  {current.error}
+                  <ItemIcon>
+                    <CircleAlertIcon />
+                  </ItemIcon>
+                  <ItemText title={current.error} />
                 </CommandItem>
               ) : (
                 hits.map((hit) => (
                   <CommandItem key={hit.id} value={`bookmark-${hit.id}`} onSelect={() => go(`/library/${hit.id}`)}>
-                    <TypeIcon type={hit.type} className="size-4" />
-                    <span className="min-w-0 flex-1 truncate">{hit.title || hit.url}</span>
-                    <span className="max-w-[35%] shrink-0 truncate text-xs text-muted-foreground">
-                      {hit.siteName ?? hostOf(hit.url)}
-                    </span>
+                    <ItemIcon>
+                      <TypeIcon type={hit.type} className="size-4" />
+                    </ItemIcon>
+                    <ItemText title={hit.title || hit.url} detail={hit.siteName ?? hostOf(hit.url)} />
                   </CommandItem>
                 ))
               )}
               {!pending && !current?.error ? (
                 hits.length ? (
                   <CommandItem value="all-results" onSelect={() => go(libraryHref("/library", { q: trimmed }))}>
-                    <SearchIcon />
-                    <span className="min-w-0 truncate">See all results for “{trimmed}”</span>
+                    <ItemIcon>
+                      <SearchIcon />
+                    </ItemIcon>
+                    <ItemText title={`See all results for “${trimmed}”`} />
                   </CommandItem>
                 ) : (
                   <CommandItem value="no-results" disabled>
-                    <SearchIcon />
-                    <span className="min-w-0 truncate">No bookmarks match “{trimmed}”</span>
+                    <ItemIcon>
+                      <SearchIcon />
+                    </ItemIcon>
+                    <ItemText title={`No bookmarks match “${trimmed}”`} />
                   </CommandItem>
                 )
               ) : null}
@@ -261,7 +347,9 @@ export function CommandPalette({ categories }: { categories: Cat[] }) {
             <CommandGroup heading="Go to">
               {pages.map(({ label, href, Icon }) => (
                 <CommandItem key={label} value={`page-${label}`} onSelect={() => go(href)}>
-                  <Icon />
+                  <ItemIcon>
+                    <Icon />
+                  </ItemIcon>
                   {label}
                 </CommandItem>
               ))}
@@ -272,8 +360,10 @@ export function CommandPalette({ categories }: { categories: Cat[] }) {
             <CommandGroup heading="Categories">
               {cats.map((c) => (
                 <CommandItem key={c.slug} value={`category-${c.slug}`} onSelect={() => go(libraryHref("/library", { category: c.slug }))}>
-                  <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: c.color }} />
-                  {c.name}
+                  <ItemIcon>
+                    <span className="size-2.5 rounded-full" style={{ background: c.color }} />
+                  </ItemIcon>
+                  <span className="min-w-0 truncate">{c.name}</span>
                 </CommandItem>
               ))}
             </CommandGroup>
@@ -290,15 +380,33 @@ export function CommandPalette({ categories }: { categories: Cat[] }) {
                     onOpenChange(false);
                   }}
                 >
-                  <Icon />
+                  <ItemIcon>
+                    <Icon />
+                  </ItemIcon>
                   {label}
                 </CommandItem>
               ))}
             </CommandGroup>
           ) : null}
 
-          <CommandEmpty>Nothing here matches “{trimmed}”.</CommandEmpty>
+          {pending ? null : (
+            <CommandEmpty className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
+              <SearchIcon className="size-5" />
+              Nothing here matches “{trimmed}”.
+            </CommandEmpty>
+          )}
         </CommandList>
+        <div className="hidden h-10 shrink-0 items-center gap-4 border-t px-3 text-xs text-muted-foreground sm:flex">
+          <span className="flex items-center gap-2 font-medium">
+            <LogoMark className="size-4" />
+            Auto Bookmark
+          </span>
+          <span className="ml-auto flex items-center gap-4">
+            <KeyHint keys={["↑", "↓"]} label="Navigate" />
+            <KeyHint keys={["↵"]} label={enterLabel(selected)} />
+            <KeyHint keys={["Esc"]} label="Close" />
+          </span>
+        </div>
       </Command>
     </CommandDialog>
   );

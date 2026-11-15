@@ -35,7 +35,10 @@ function useReadState(id: string, initiallyRead: boolean, ready: boolean) {
 }
 
 export function BookmarkActions({ id, read: initiallyRead, ready }: { id: string; read: boolean; ready: boolean }) {
-  const [pending, start] = useTransition();
+  const [readPending, startRead] = useTransition();
+  const [reprocessPending, startReprocess] = useTransition();
+  const [deletePending, startDelete] = useTransition();
+  const pending = readPending || reprocessPending || deletePending;
   const [read, setRead] = useReadState(id, initiallyRead, ready);
   return (
     <div className="flex flex-wrap gap-2 lg:flex-col lg:items-stretch">
@@ -46,7 +49,7 @@ export function BookmarkActions({ id, read: initiallyRead, ready }: { id: string
         onClick={() => {
           const next = !read;
           setRead(next);
-          start(async () => {
+          startRead(async () => {
             await setBookmarkReadAction(id, next);
             toast.success(next ? "Marked as read." : "Back on your To read list.");
           });
@@ -60,19 +63,19 @@ export function BookmarkActions({ id, read: initiallyRead, ready }: { id: string
         variant="outline"
         disabled={pending}
         onClick={() =>
-          start(async () => {
+          startReprocess(async () => {
             await reprocessBookmarkAction(id);
             toast.success("Summarizing again. This page updates when it's done.");
           })
         }
       >
-        {pending ? <Spinner data-icon="inline-start" /> : <RefreshCwIcon data-icon="inline-start" />}
+        {reprocessPending ? <Spinner data-icon="inline-start" /> : <RefreshCwIcon data-icon="inline-start" />}
         Summarize again
       </Button>
       <AlertDialog>
         <AlertDialogTrigger asChild>
           <Button type="button" variant="destructive" disabled={pending}>
-            <Trash2Icon data-icon="inline-start" />
+            {deletePending ? <Spinner data-icon="inline-start" /> : <Trash2Icon data-icon="inline-start" />}
             Delete bookmark
           </Button>
         </AlertDialogTrigger>
@@ -83,7 +86,7 @@ export function BookmarkActions({ id, read: initiallyRead, ready }: { id: string
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={() => start(() => deleteBookmarkAction(id))}>
+            <AlertDialogAction variant="destructive" onClick={() => startDelete(() => deleteBookmarkAction(id))}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

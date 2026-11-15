@@ -10,10 +10,11 @@ import { RowRibbon } from "./row-ribbon";
 import { Thumb } from "./thumb";
 import { TypeIcon } from "./type-icon";
 
-type Item = Omit<BookmarkListItem, "createdAt" | "readAt" | "favoritedAt"> & {
+type Item = Omit<BookmarkListItem, "createdAt" | "readAt" | "favoritedAt" | "readMinutes"> & {
   createdAt: Date | string;
   readAt: Date | string | null;
   favoritedAt?: Date | string | null;
+  readMinutes?: number | null;
 };
 
 function previewOf(item: Item) {
@@ -102,6 +103,7 @@ export function BookmarkRow({
               </span>
             </span>
             {item.author && item.type !== "web" ? <span className="truncate">{item.author}</span> : null}
+            {item.readMinutes ? <span className="tabular-nums">{item.readMinutes} min read</span> : null}
             {item.linkStatus === "dead" ? (
               <span className="inline-flex items-center gap-1 font-medium text-danger" title="The original page is gone; the saved copy is still here.">
                 <Link2OffIcon aria-hidden className="size-3.5" />

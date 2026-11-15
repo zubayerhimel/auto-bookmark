@@ -124,6 +124,8 @@ export const listFields = {
   categoryName: schema.category.name,
   categorySlug: schema.category.slug,
   categoryColor: schema.category.color,
+  /** Minutes to read the saved copy of an article, as the reader view counts them; null when there's little text. */
+  readMinutes: sql<number | null>`case when ${schema.bookmark.type} = 'web' and regexp_count(${schema.bookmark.content}, '\\S+') >= 150 then greatest(1, round(regexp_count(${schema.bookmark.content}, '\\S+') / 230.0))::int end`,
 };
 
 export type BookmarkListItem = {
@@ -148,6 +150,7 @@ export type BookmarkListItem = {
   categoryName: string | null;
   categorySlug: string | null;
   categoryColor: string | null;
+  readMinutes: number | null;
 };
 
 export const PAGE_SIZE = 30;

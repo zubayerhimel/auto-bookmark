@@ -40,7 +40,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur md:static md:h-12 md:rounded-t-xl md:border-none md:bg-transparent md:backdrop-blur-none">
           <SidebarTrigger />
-          <Separator orientation="vertical" className="mr-1 data-[orientation=vertical]:h-4 md:hidden" />
+          <Separator orientation="vertical" className="mr-1 data-vertical:h-4 data-vertical:self-center md:hidden" />
           <Link href="/library" className="inline-flex items-center gap-2 font-bold tracking-tight md:hidden">
             <LogoMark className="size-6" />
             Auto Bookmark

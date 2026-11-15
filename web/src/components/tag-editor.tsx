@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { setBookmarkTagsAction } from "@/lib/actions";
+import { isComposing } from "@/lib/keyboard";
 import { libraryHref } from "@/lib/search-params";
 import { cleanTags, MAX_TAG_LENGTH, MAX_TAGS } from "@/lib/tags";
 
@@ -107,6 +108,7 @@ export function TagEditor({ bookmarkId, tags, locked }: { bookmarkId: string; ta
               else setInput(v);
             }}
             onKeyDown={(e) => {
+              if (isComposing(e.nativeEvent)) return;
               if (e.key === "Enter" && input.trim()) {
                 e.preventDefault();
                 add(input);

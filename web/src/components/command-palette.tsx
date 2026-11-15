@@ -17,10 +17,11 @@ import {
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { toast } from "sonner";
 import type { BookmarkType } from "@/db/schema";
 import { addBookmarkAction } from "@/lib/actions";
+import { isEditableTarget, isModShortcut, isSlash } from "@/lib/keyboard";
 import { libraryHref } from "@/lib/search-params";
 import { Button } from "@/components/ui/button";
 import {
@@ -32,8 +33,8 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
+import { Shortcut } from "./shortcut";
 import { TypeIcon } from "./type-icon";
 
 type Cat = { name: string; slug: string; color: string };
@@ -55,27 +56,9 @@ export function CommandPaletteButton() {
   );
 }
 
-const noopSubscribe = () => () => {};
-
 /** "⌘ K" on Apple devices, "Ctrl K" elsewhere. Renders nothing on the server to avoid a mismatch. */
 export function PaletteShortcut({ className }: { className?: string }) {
-  const mac = useSyncExternalStore(
-    noopSubscribe,
-    () => /Mac|iPhone|iPad/.test(navigator.platform),
-    () => null,
-  );
-  if (mac === null) return null;
-  return (
-    <KbdGroup className={className}>
-      <Kbd>{mac ? "⌘" : "Ctrl"}</Kbd>
-      <Kbd>K</Kbd>
-    </KbdGroup>
-  );
-}
-
-function isEditable(el: EventTarget | null) {
-  if (!(el instanceof HTMLElement)) return false;
-  return el.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(el.tagName);
+  return <Shortcut keys={["mod", "K"]} hideUntilKnown className={className} />;
 }
 
 /** Something that reads as a link: has a scheme, or is a single word with a dot like "example.com/page". */
@@ -137,13 +120,13 @@ export function CommandPalette({ categories }: { categories: Cat[] }) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key.toLowerCase() === "k" && (e.metaKey || e.ctrlKey) && !e.altKey && !e.shiftKey) {
+      if (isModShortcut(e, "k")) {
         e.preventDefault();
         setOpen((o) => !o);
         return;
       }
       // On the library page "/" focuses its own search box; everywhere else it opens the palette.
-      if (e.key === "/" && !isEditable(e.target) && !document.getElementById("library-search")) {
+      if (isSlash(e) && !isEditableTarget(e.target) && !document.getElementById("library-search")) {
         e.preventDefault();
         setOpen(true);
       }

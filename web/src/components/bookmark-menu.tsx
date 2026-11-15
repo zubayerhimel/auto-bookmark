@@ -219,7 +219,8 @@ export function BookmarkMenu({
   return (
     <MenuContext value={{ item, categories, pending, run, confirmDelete: () => setConfirming(true) }}>
       <ContextMenu modal={false}>
-        <ContextMenuTrigger asChild disabled={disabled}>
+        {/* No iOS link preview on long-press: the long-press opens this menu instead. */}
+        <ContextMenuTrigger asChild disabled={disabled} className="[-webkit-touch-callout:none]">
           {children}
         </ContextMenuTrigger>
         <ContextMenuContent className="w-56">

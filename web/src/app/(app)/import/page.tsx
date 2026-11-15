@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DeleteAllData } from "@/components/delete-all-data";
 import { ImportForm } from "@/components/import-form";
+import { Shortcut } from "@/components/shortcut";
 import { Spinner } from "@/components/ui/spinner";
 import { libraryStats } from "@/lib/bookmarks";
 import { requireUser } from "@/lib/session";
@@ -17,14 +18,20 @@ const SOURCES = [
     name: "Chrome, Edge, Brave or Arc",
     how: (
       <>
-        Open the bookmark manager (<kbd className={kbd}>Ctrl</kbd> <kbd className={kbd}>Shift</kbd>{" "}
-        <kbd className={kbd}>O</kbd>), open the ⋮ menu and choose Export bookmarks.
+        Open the bookmark manager (
+        <Shortcut keys={["mod", "shift", "O"]} apple={["mod", "alt", "B"]} keyClassName={kbd} />
+        ), open the ⋮ menu and choose Export bookmarks.
       </>
     ),
   },
   {
     name: "Firefox",
-    how: <>Open the Library (Ctrl Shift O), then Import and Backup → Export Bookmarks to HTML.</>,
+    how: (
+      <>
+        Open the Library (<Shortcut keys={["mod", "shift", "O"]} keyClassName={kbd} />), then Import and Backup →
+        Export Bookmarks to HTML.
+      </>
+    ),
   },
   { name: "Safari", how: <>File → Export → Bookmarks.</> },
   {

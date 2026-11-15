@@ -24,6 +24,7 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from "
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
+import { isComposing } from "@/lib/keyboard";
 import { libraryHref } from "@/lib/search-params";
 import {
   createCategoryAction,
@@ -342,7 +343,7 @@ export function CategoryList({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === "Escape") setQuery("");
+              if (e.key === "Escape" && !isComposing(e.nativeEvent)) setQuery("");
             }}
             placeholder="Find a category"
             aria-label="Find a category"

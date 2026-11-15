@@ -88,7 +88,7 @@ write any of them.
 2. Open `chrome://extensions`, enable **Developer mode**, choose **Load unpacked**, and pick the
    folder that contains `manifest.json`.
 3. A sign-in tab opens. After signing in, the extension connects to your account automatically.
-4. Pin the extension. Click it (or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>) on any page.
+4. Pin the extension. Click it (or press <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>S</kbd>, <kbd>⌥</kbd>+<kbd>⇧</kbd>+<kbd>S</kbd> on a Mac) on any page.
    The popup saves the page and shows its summary, category and tags once the AI has filed it,
    with **Undo** if you didn't mean to. On a page you saved before, it shows that bookmark
    instead of saving again.

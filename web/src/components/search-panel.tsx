@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Spinner } from "@/components/ui/spinner";
 import { AskAnswer } from "./ask-answer";
 import { libraryParams } from "@/lib/search-params";
+import { isComposing, isEditableTarget, isSlash } from "@/lib/keyboard";
 import { BookmarkRow, bookmarkListClass } from "./bookmark-row";
 
 type Result = {
@@ -86,8 +87,7 @@ export function SearchPanel({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (e.key === "/" && !["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) {
+      if (isSlash(e) && !isEditableTarget(e.target)) {
         e.preventDefault();
         inputRef.current?.focus();
       }
@@ -113,8 +113,9 @@ export function SearchPanel({ children }: { children: React.ReactNode }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => {
+              if (isComposing(e.nativeEvent)) return;
               if (e.key === "Escape") setQuery("");
-              if (e.key === "Enter" && !e.nativeEvent.isComposing) ask();
+              if (e.key === "Enter") ask();
             }}
             placeholder="Search or ask about anything you've saved"
             autoComplete="off"

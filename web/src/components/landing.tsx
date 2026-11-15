@@ -5,7 +5,7 @@ import { BookmarkIcon, CheckIcon, FileText, MessageSquareText, MonitorPlay, Sear
 import { Highlight } from "@/components/highlight";
 import { LogoMark } from "@/components/logo";
 import { Button } from "@/components/ui/button";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { Shortcut } from "@/components/shortcut";
 
 // Sorted longest first, so the shortest ribbons leave room for the caption.
 const shelf = [
@@ -197,11 +197,7 @@ function SaveTimeline() {
           <h3 className="mt-5 font-semibold">You save it</h3>
           <p className="mt-1 max-w-[42ch] text-sm text-ink-soft">
             Click the extension in your toolbar or press{" "}
-            <KbdGroup>
-              <Kbd className="bg-card text-ink shadow-[0_0_0_1px_var(--rule)]">Alt</Kbd>
-              <Kbd className="bg-card text-ink shadow-[0_0_0_1px_var(--rule)]">Shift</Kbd>
-              <Kbd className="bg-card text-ink shadow-[0_0_0_1px_var(--rule)]">S</Kbd>
-            </KbdGroup>
+            <Shortcut keys={["alt", "shift", "S"]} keyClassName="bg-card text-ink shadow-[0_0_0_1px_var(--rule)]" />
             <span>. Right-click a link to save it without opening it.</span>
           </p>
         </li>

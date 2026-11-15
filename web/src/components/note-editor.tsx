@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Textarea } from "@/components/ui/textarea";
 import { setBookmarkNoteAction } from "@/lib/actions";
+import { isComposing } from "@/lib/keyboard";
 
 /** The user's note on a bookmark (or the text they highlighted when saving it), editable in place. */
 export function NoteEditor({ bookmarkId, note }: { bookmarkId: string; note: string | null }) {
@@ -45,6 +46,8 @@ export function NoteEditor({ bookmarkId, note }: { bookmarkId: string; note: str
             rows={4}
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
+              if (isComposing(e.nativeEvent)) return;
+              // Both modifiers save: Ctrl+Enter does nothing else in a Mac text box.
               if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
                 e.preventDefault();
                 save();

@@ -3,6 +3,7 @@ import { CheckIcon, Link2OffIcon } from "lucide-react";
 import type { BookmarkListItem } from "@/lib/bookmarks";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
 import { libraryHref } from "@/lib/search-params";
+import { BookmarkMenu, BookmarkMenuButton, type BookmarkMenuProps } from "./bookmark-menu";
 import { FavoriteButton } from "./favorite-button";
 import { Highlight } from "./highlight";
 import { IntentLink } from "./intent-link";
@@ -31,6 +32,7 @@ export function BookmarkRow({
   terms,
   showUnread = true,
   selection,
+  menu,
 }: {
   item: Item;
   terms?: string[];
@@ -38,6 +40,8 @@ export function BookmarkRow({
   showUnread?: boolean;
   /** In select mode, clicking the card toggles it instead of opening it. */
   selection?: { selected: boolean; onToggle: (range: boolean) => void };
+  /** Gives the card a right-click menu and a "⋯" button with its actions. */
+  menu?: BookmarkMenuProps;
 }) {
   const busy = item.status === "pending" || item.status === "processing";
   const filing = item.status === "ready" && !item.categoryId && !item.categoryLocked;
@@ -48,10 +52,10 @@ export function BookmarkRow({
   const preview = previewOf(item);
   const unread = showUnread && !item.readAt && item.status === "ready";
 
-  return (
+  const card = (
     <li
       data-selected={selection?.selected || undefined}
-      className="group relative rounded-2xl border border-rule bg-card transition-[border-color,box-shadow] duration-150 ease-out hover:border-ink/25 data-selected:border-action data-selected:ring-1 data-selected:ring-action"
+      className="group relative rounded-2xl border border-rule bg-card transition-[border-color,box-shadow] duration-150 ease-out hover:border-ink/25 data-selected:border-action data-selected:ring-1 data-selected:ring-action data-[state=open]:border-ink/25"
     >
       {/* The ribbon sits a little tucked under the top edge and pulls down on hover. */}
       <span aria-hidden className="pointer-events-none absolute -top-px left-4 h-11 w-2.5 overflow-hidden sm:left-5">
@@ -77,7 +81,14 @@ export function BookmarkRow({
               <time dateTime={new Date(item.createdAt).toISOString()} className="text-xs text-ink-faint tabular-nums">
                 {timeAgo(item.createdAt)}
               </time>
-              <FavoriteButton id={item.id} favorite={!!item.favoritedAt} compact className="-mr-1.5" />
+              <FavoriteButton
+                id={item.id}
+                favorite={!!item.favoritedAt}
+                compact
+                className={menu ? undefined : "-mr-1.5"}
+                onChange={menu ? (on) => menu.onApplied([item.id], { kind: on ? "favorite" : "unfavorite" }) : undefined}
+              />
+              {menu ? <BookmarkMenuButton className="-mr-1.5" /> : null}
             </span>
           </div>
           <h3 className="mt-1 text-[1.0625rem] leading-snug font-semibold text-pretty break-words">
@@ -148,6 +159,24 @@ export function BookmarkRow({
         />
       ) : null}
     </li>
+  );
+
+  if (!menu) return card;
+  return (
+    <BookmarkMenu
+      {...menu}
+      disabled={!!selection}
+      item={{
+        id: item.id,
+        url: item.url,
+        title,
+        read: !!item.readAt,
+        favorite: !!item.favoritedAt,
+        categoryId: item.categoryId,
+      }}
+    >
+      {card}
+    </BookmarkMenu>
   );
 }
 

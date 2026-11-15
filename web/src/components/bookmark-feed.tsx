@@ -85,6 +85,7 @@ export function BookmarkFeed({
               if (op.kind === "read") return { ...i, readAt: i.readAt ?? new Date() };
               if (op.kind === "unread") return { ...i, readAt: null };
               if (op.kind === "favorite") return { ...i, favoritedAt: i.favoritedAt ?? new Date() };
+              if (op.kind === "unfavorite") return { ...i, favoritedAt: null };
               return category
                 ? { ...i, categoryId: category.id, categoryName: category.name, categoryColor: category.color, categoryLocked: true }
                 : i;
@@ -149,6 +150,7 @@ export function BookmarkFeed({
             item={item}
             showUnread={showUnread}
             selection={selecting ? { selected: selected.has(item.id), onToggle: (range) => toggle(index, range) } : undefined}
+            menu={{ categories, onApplied: applyLocally }}
           />
         ))}
       </ol>

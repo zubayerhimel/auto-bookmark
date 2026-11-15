@@ -240,6 +240,7 @@ export type BulkOperation =
   | { kind: "read" }
   | { kind: "unread" }
   | { kind: "favorite" }
+  | { kind: "unfavorite" }
   | { kind: "delete" }
   | { kind: "move"; categoryId: string };
 
@@ -270,6 +271,9 @@ export async function bulkBookmarksAction(ids: string[], op: BulkOperation): Pro
         .set({ favoritedAt: sql`coalesce(${schema.bookmark.favoritedAt}, now())` })
         .where(mine)
         .returning(returning);
+      break;
+    case "unfavorite":
+      rows = await db.update(schema.bookmark).set({ favoritedAt: null }).where(mine).returning(returning);
       break;
     case "delete":
       rows = await db.delete(schema.bookmark).where(mine).returning(returning);

@@ -186,6 +186,8 @@ To run the job by hand: `curl -H "Authorization: Bearer $CRON_SECRET" <app addre
    rename, describe, merge, or delete them, move any bookmark manually (the AI won't override
    that choice), or re-file the whole library after changing categories. **Select** in the library
    lets you move, mark read or unread, or delete many bookmarks at once (Shift-click selects a range).
+   For a single card, right-click it (or use its **⋯** button) to favorite, mark read or unread,
+   move or delete it without opening it.
 
 ### Code map
 

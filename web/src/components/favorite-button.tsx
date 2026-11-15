@@ -16,11 +16,14 @@ export function FavoriteButton({
   favorite,
   compact = false,
   className,
+  onChange,
 }: {
   id: string;
   favorite: boolean;
   compact?: boolean;
   className?: string;
+  /** Called once the change is saved. */
+  onChange?: (favorite: boolean) => void;
 }) {
   // Local rather than optimistic state: cards loaded by scrolling aren't redrawn by the server
   // refresh, so their `favorite` prop can stay stale. A changed prop still wins.
@@ -35,6 +38,7 @@ export function FavoriteButton({
     start(async () => {
       try {
         await setBookmarkFavoriteAction(id, next);
+        onChange?.(next);
       } catch {
         setState((s) => ({ ...s, on: !next }));
         toast.error(next ? "Couldn't add it to favorites. Try again." : "Couldn't remove it from favorites. Try again.");
@@ -62,7 +66,8 @@ export function FavoriteButton({
         onClick={toggle}
         data-on={on || undefined}
         className={cn(
-          "relative text-ink-faint opacity-0 group-hover:opacity-100 focus-visible:opacity-100 active:scale-90 data-on:opacity-100 pointer-coarse:opacity-100",
+          // z-1 lifts it above the title link's whole-card overlay, which comes later in the card.
+          "relative z-1 text-ink-faint opacity-0 group-hover:opacity-100 focus-visible:opacity-100 active:scale-90 data-on:opacity-100 pointer-coarse:opacity-100",
           className,
         )}
       >

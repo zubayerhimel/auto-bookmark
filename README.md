@@ -125,6 +125,8 @@ embedded favicons are no problem.
 - Each link is then fetched, summarized and filed like a new save. Processing runs in the background
   in batches of up to four minutes. If a batch is cut off (Vercel's function limit, a restart), the
   app resumes it the next time it notices bookmarks waiting with no job running.
+- **Start over** at the bottom of the page deletes every bookmark, category and extension token
+  (after typing "delete" to confirm). The Clerk account itself is kept.
 
 ## Saving from your phone
 

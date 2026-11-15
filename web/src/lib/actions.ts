@@ -447,3 +447,28 @@ export async function revokeExtensionTokenAction(id: string) {
     .where(and(eq(schema.apiToken.id, id), eq(schema.apiToken.userId, user.id)));
   revalidatePath("/extension");
 }
+
+// ---------- Account data ----------
+
+/** The word typed to confirm deleting everything. */
+const DELETE_ALL_CONFIRMATION = "delete";
+
+/** Deletes every bookmark, category and extension token the user has. The sign-in account itself stays. */
+export async function deleteAllDataAction(confirmation: string): Promise<ActionState> {
+  const user = await requireUser();
+  if (confirmation.trim().toLowerCase() !== DELETE_ALL_CONFIRMATION) {
+    return { error: `Type “${DELETE_ALL_CONFIRMATION}” to confirm.` };
+  }
+  try {
+    await db.transaction(async (tx) => {
+      await tx.delete(schema.bookmark).where(eq(schema.bookmark.userId, user.id));
+      await tx.delete(schema.category).where(eq(schema.category.userId, user.id));
+      await tx.delete(schema.apiToken).where(eq(schema.apiToken.userId, user.id));
+    });
+  } catch (err) {
+    console.error("[delete-all] failed", err);
+    return { error: "Couldn't delete your data. Nothing was removed; try again." };
+  }
+  refresh();
+  return { ok: true, message: "Everything is deleted. Your library is empty." };
+}

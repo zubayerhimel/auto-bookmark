@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { DeleteAllData } from "@/components/delete-all-data";
 import { ImportForm } from "@/components/import-form";
 import { Spinner } from "@/components/ui/spinner";
 import { libraryStats } from "@/lib/bookmarks";
@@ -74,6 +75,19 @@ export default async function ImportPage() {
             </div>
           ))}
         </dl>
+      </section>
+
+      <section aria-labelledby="your-data" className="mt-12">
+        <h2 id="your-data" className="text-lg font-semibold tracking-tight">
+          Start over
+        </h2>
+        <div className="mt-3 flex flex-col gap-4 rounded-2xl border border-rule bg-card px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="max-w-[48ch] text-sm leading-relaxed text-ink-soft">
+            Remove every bookmark, category and extension sign-in from Auto Bookmark. Your account stays, so you can
+            import again from scratch.
+          </p>
+          <DeleteAllData total={stats.total} />
+        </div>
       </section>
     </div>
   );

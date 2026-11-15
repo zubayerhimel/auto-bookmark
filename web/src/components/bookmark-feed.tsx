@@ -84,6 +84,7 @@ export function BookmarkFeed({
               if (!hit.has(i.id)) return i;
               if (op.kind === "read") return { ...i, readAt: i.readAt ?? new Date() };
               if (op.kind === "unread") return { ...i, readAt: null };
+              if (op.kind === "favorite") return { ...i, favoritedAt: i.favoritedAt ?? new Date() };
               return category
                 ? { ...i, categoryId: category.id, categoryName: category.name, categoryColor: category.color, categoryLocked: true }
                 : i;

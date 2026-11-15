@@ -173,7 +173,8 @@ To run the job by hand: `curl -H "Authorization: Bearer $CRON_SECRET" <app addre
    key points and tags, then chooses one of your existing categories or creates a new one.
    Text is embedded with pgvector and indexed for full-text search. On a bookmark's page you can
    add a note and edit its tags; tags you edit are kept when it's summarized again. Click any tag
-   (or pick one on the **Tags** page, `/tags`) to list every bookmark carrying it.
+   (or pick one on the **Tags** page, `/tags`) to list every bookmark carrying it. Star a bookmark
+   from its card or page to keep it under **Favorites**.
 3. **Search**: longer questions are first turned into a search plan (topic, content type,
    category, date range). Results combine semantic similarity and keyword matches with
    reciprocal rank fusion, and matching words are highlighted. Semantic matches must be close to

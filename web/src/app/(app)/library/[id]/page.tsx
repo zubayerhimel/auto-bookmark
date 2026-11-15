@@ -7,6 +7,7 @@ import { BookmarkActions } from "@/components/bookmark-actions";
 import { CheckLinkButton } from "@/components/check-link-button";
 import { RowRibbon } from "@/components/row-ribbon";
 import { CategoryPicker } from "@/components/category-picker";
+import { FavoriteButton } from "@/components/favorite-button";
 import { NoteEditor } from "@/components/note-editor";
 import { RelatedShelf } from "@/components/related-shelf";
 import { TagEditor } from "@/components/tag-editor";
@@ -81,6 +82,7 @@ export default async function BookmarkPage({ params }: { params: Promise<{ id: s
                     <ExternalLinkIcon data-icon="inline-end" />
                   </a>
                 </Button>
+                <FavoriteButton id={b.id} favorite={b.favoritedAt !== null} />
                 {b.content && b.type !== "tweet" ? (
                   <Button asChild variant="outline">
                     <Link href={`/library/${b.id}/read`}>

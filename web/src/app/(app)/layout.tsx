@@ -30,7 +30,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
       {/* Lives in the layout so sidebar counts update too, not just the page. */}
       <AutoRefresh active={stats.busy > 0 || stats.filing > 0} />
       <ResumeProcessing stalled={stats.stalled > 0 && stats.working === 0} />
-      <AppSidebar categories={categories} total={stats.total} uncategorized={stats.uncategorized} unread={stats.unread} />
+      <AppSidebar
+        categories={categories}
+        total={stats.total}
+        uncategorized={stats.uncategorized}
+        unread={stats.unread}
+        favorites={stats.favorites}
+      />
       <SidebarInset className="min-w-0">
         <header className="sticky top-0 z-10 flex h-14 shrink-0 items-center gap-2 border-b bg-background/90 px-3 backdrop-blur md:static md:h-12 md:rounded-t-xl md:border-none md:bg-transparent md:backdrop-blur-none">
           <SidebarTrigger />

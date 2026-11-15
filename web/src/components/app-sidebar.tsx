@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQueryStates } from "nuqs";
 import { Suspense } from "react";
-import { BookOpenIcon, FileUpIcon, HashIcon, LibraryIcon, PuzzleIcon, SearchIcon, TagsIcon } from "lucide-react";
+import { BookOpenIcon, FileUpIcon, HashIcon, LibraryIcon, PuzzleIcon, SearchIcon, StarIcon, TagsIcon } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { openCommandPalette, PaletteShortcut } from "@/components/command-palette";
 import { LogoMark } from "@/components/logo";
@@ -28,7 +28,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { libraryHref, libraryParams } from "@/lib/search-params";
 
 type Cat = { id: string; name: string; slug: string; color: string; count: number };
-type Props = { categories: Cat[]; total: number; uncategorized: number; unread: number };
+type Props = { categories: Cat[]; total: number; uncategorized: number; unread: number; favorites: number };
 
 function useCloseOnNavigate() {
   const { isMobile, setOpenMobile } = useSidebar();
@@ -39,14 +39,16 @@ function useCloseOnNavigate() {
 
 function useActiveKey() {
   const pathname = usePathname();
-  const [{ category, tag, view }] = useQueryStates({
+  const [{ category, tag, view, favorites }] = useQueryStates({
     category: libraryParams.category,
     tag: libraryParams.tag,
     view: libraryParams.view,
+    favorites: libraryParams.favorites,
   });
   if (pathname !== "/library") return null;
   if (category) return category;
   if (tag) return null;
+  if (favorites) return "favorites";
   return view === "unread" ? "unread" : "all";
 }
 
@@ -56,13 +58,14 @@ function useSort() {
   return sort;
 }
 
-function ViewMenu({ total, unread }: Pick<Props, "total" | "unread">) {
+function ViewMenu({ total, unread, favorites }: Pick<Props, "total" | "unread" | "favorites">) {
   const active = useActiveKey();
   const close = useCloseOnNavigate();
   const sort = useSort();
   const items = [
     { key: "all", href: libraryHref("/library", { sort }), label: "All bookmarks", count: total, Icon: LibraryIcon },
     { key: "unread", href: libraryHref("/library", { view: "unread", sort }), label: "To read", count: unread, Icon: BookOpenIcon },
+    { key: "favorites", href: libraryHref("/library", { favorites: true, sort }), label: "Favorites", count: favorites, Icon: StarIcon },
   ];
   return (
     <SidebarMenu>
@@ -162,8 +165,8 @@ export function AppSidebar(props: Props) {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupContent>
-            <Suspense fallback={<MenuFallback count={2} />}>
-              <ViewMenu total={props.total} unread={props.unread} />
+            <Suspense fallback={<MenuFallback count={3} />}>
+              <ViewMenu total={props.total} unread={props.unread} favorites={props.favorites} />
             </Suspense>
           </SidebarGroupContent>
         </SidebarGroup>

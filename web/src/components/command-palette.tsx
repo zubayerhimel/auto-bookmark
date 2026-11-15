@@ -11,6 +11,7 @@ import {
   PlusIcon,
   PuzzleIcon,
   SearchIcon,
+  StarIcon,
   SunIcon,
   TagsIcon,
 } from "lucide-react";
@@ -95,6 +96,7 @@ function hostOf(url: string) {
 const PAGES = [
   { label: "All bookmarks", href: "/library", Icon: LibraryIcon, keywords: "library home everything" },
   { label: "To read", href: libraryHref("/library", { view: "unread" }), Icon: BookOpenIcon, keywords: "unread later queue" },
+  { label: "Favorites", href: libraryHref("/library", { favorites: true }), Icon: StarIcon, keywords: "starred pinned saved important" },
   { label: "Manage categories", href: "/categories", Icon: TagsIcon, keywords: "folders rename" },
   { label: "Tags", href: "/tags", Icon: HashIcon, keywords: "labels topics hashtags" },
   { label: "Import bookmarks", href: "/import", Icon: FileUpIcon, keywords: "chrome firefox pocket raindrop upload" },

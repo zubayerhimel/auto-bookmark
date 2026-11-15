@@ -3,7 +3,7 @@
 import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, eq, inArray, isNull, ne } from "drizzle-orm";
+import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
 import { libraryQuery, listBookmarks, saveBookmark } from "./bookmarks";
 import { findOrCreateCategory, pruneEmptyAiCategories, slugify, tidyName } from "./categories";
@@ -155,6 +155,18 @@ export async function setBookmarkTagsAction(id: string, tags: string[] | null) {
   refresh();
 }
 
+/** Stars (or un-stars) a bookmark. */
+export async function setBookmarkFavoriteAction(id: string, favorite: boolean) {
+  const user = await requireUser();
+  const updated = await db
+    .update(schema.bookmark)
+    .set({ favoritedAt: favorite ? new Date() : null })
+    .where(and(eq(schema.bookmark.id, id), eq(schema.bookmark.userId, user.id)))
+    .returning({ id: schema.bookmark.id });
+  if (!updated.length) throw new Error("Bookmark not found.");
+  refresh();
+}
+
 /** Puts a bookmark on (or takes it off) the reading list. */
 export async function setBookmarkReadAction(id: string, read: boolean) {
   const user = await requireUser();
@@ -219,6 +231,7 @@ export async function setBookmarkCategoryAction(id: string, choice: string) {
 export type BulkOperation =
   | { kind: "read" }
   | { kind: "unread" }
+  | { kind: "favorite" }
   | { kind: "delete" }
   | { kind: "move"; categoryId: string };
 
@@ -239,6 +252,14 @@ export async function bulkBookmarksAction(ids: string[], op: BulkOperation): Pro
       rows = await db
         .update(schema.bookmark)
         .set({ readAt: op.kind === "read" ? new Date() : null })
+        .where(mine)
+        .returning(returning);
+      break;
+    case "favorite":
+      // Already-starred ones keep their original date.
+      rows = await db
+        .update(schema.bookmark)
+        .set({ favoritedAt: sql`coalesce(${schema.bookmark.favoritedAt}, now())` })
         .where(mine)
         .returning(returning);
       break;

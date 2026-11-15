@@ -3,15 +3,17 @@ import { CheckIcon, Link2OffIcon } from "lucide-react";
 import type { BookmarkListItem } from "@/lib/bookmarks";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
 import { libraryHref } from "@/lib/search-params";
+import { FavoriteButton } from "./favorite-button";
 import { Highlight } from "./highlight";
 import { IntentLink } from "./intent-link";
 import { RowRibbon } from "./row-ribbon";
 import { Thumb } from "./thumb";
 import { TypeIcon } from "./type-icon";
 
-type Item = Omit<BookmarkListItem, "createdAt" | "readAt"> & {
+type Item = Omit<BookmarkListItem, "createdAt" | "readAt" | "favoritedAt"> & {
   createdAt: Date | string;
   readAt: Date | string | null;
+  favoritedAt?: Date | string | null;
 };
 
 function previewOf(item: Item) {
@@ -70,9 +72,12 @@ export function BookmarkRow({
                     ? "Choosing a category…"
                     : (item.categoryName ?? "Uncategorized")}
             </p>
-            <time dateTime={new Date(item.createdAt).toISOString()} className="shrink-0 text-xs text-ink-faint tabular-nums">
-              {timeAgo(item.createdAt)}
-            </time>
+            <span className="-my-1 flex shrink-0 items-center gap-1">
+              <time dateTime={new Date(item.createdAt).toISOString()} className="text-xs text-ink-faint tabular-nums">
+                {timeAgo(item.createdAt)}
+              </time>
+              <FavoriteButton id={item.id} favorite={!!item.favoritedAt} compact className="-mr-1.5" />
+            </span>
           </div>
           <h3 className="mt-1 text-[1.0625rem] leading-snug font-semibold text-pretty break-words">
             <IntentLink

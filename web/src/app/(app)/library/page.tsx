@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { SearchParams } from "nuqs/server";
 import type { BookmarkType } from "@/db/schema";
-import { BookmarkPlusIcon, CheckCheckIcon, CircleAlertIcon, FileUpIcon, PuzzleIcon, RotateCwIcon, XIcon } from "lucide-react";
+import { BookmarkPlusIcon, CheckCheckIcon, CircleAlertIcon, FileUpIcon, PuzzleIcon, RotateCwIcon, StarIcon, XIcon } from "lucide-react";
 import { AddLinkForm } from "@/components/add-link-form";
 import { BookmarkFeed } from "@/components/bookmark-feed";
 import { SortMenu } from "@/components/sort-menu";
@@ -27,9 +27,10 @@ const TYPES: { key: BookmarkType | "all"; label: string }[] = [
 type PageProps = { searchParams: Promise<SearchParams> };
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
-  const { category: slug, view, tag } = await loadLibraryParams(searchParams);
+  const { category: slug, view, tag, favorites } = await loadLibraryParams(searchParams);
   if (slug === "uncategorized") return { title: "Uncategorized" };
   if (!slug && tag) return { title: `#${tag}` };
+  if (!slug && favorites) return { title: "Favorites" };
   if (view === "unread") return { title: "To read" };
   if (!slug) return { title: "Library" };
   const user = await requireUser();
@@ -45,6 +46,7 @@ export default async function LibraryPage({ searchParams }: PageProps) {
   const unread = view === "unread";
   const query = libraryQuery(params);
   const tag = query.tag ?? null;
+  const favorites = query.favorites || null;
 
   const [category, { items, nextCursor }, categories] = await Promise.all([
     query.categorySlug ? getCategoryBySlug(user.id, query.categorySlug) : null,
@@ -56,10 +58,18 @@ export default async function LibraryPage({ searchParams }: PageProps) {
 
   const heading =
     category?.name ??
-    (slug === "uncategorized" ? "Uncategorized" : tag ? `#${tag}` : unread ? "To read" : "All bookmarks");
+    (slug === "uncategorized"
+      ? "Uncategorized"
+      : tag
+        ? `#${tag}`
+        : favorites
+          ? "Favorites"
+          : unread
+            ? "To read"
+            : "All bookmarks");
   const qs = (patch: Parameters<typeof libraryHref>[1]) =>
-    libraryHref("/library", { category: slug, tag, type: typeParam, view, sort, ...patch });
-  const filters = libraryHref({ category: slug, tag, type: typeParam, view, sort });
+    libraryHref("/library", { category: slug, tag, favorites, type: typeParam, view, sort, ...patch });
+  const filters = libraryHref({ category: slug, tag, favorites, type: typeParam, view, sort });
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -75,9 +85,13 @@ export default async function LibraryPage({ searchParams }: PageProps) {
               </h1>
               {category?.description ? (
                 <p className="mt-1.5 max-w-[60ch] text-ink-soft">{category.description}</p>
-              ) : unread && !slug && !tag ? (
+              ) : unread && !slug && !tag && !favorites ? (
                 <p className="mt-1.5 max-w-[60ch] text-ink-soft">
                   Everything you&apos;ve saved but not opened yet. Opening a bookmark takes it off this list.
+                </p>
+              ) : favorites && !slug && !tag ? (
+                <p className="mt-1.5 max-w-[60ch] text-ink-soft">
+                  Bookmarks you starred. Star one from its card or its page to keep it here.
                 </p>
               ) : null}
               {tag ? (
@@ -120,7 +134,19 @@ export default async function LibraryPage({ searchParams }: PageProps) {
                 </li>
               );
             })}
-            <li className="ml-auto pl-6">
+            <li className="ml-auto flex gap-6 pl-6">
+              <Link
+                href={qs({ favorites: favorites ? null : true })}
+                data-on={!!favorites}
+                className="inline-flex h-10 items-center gap-1.5 border-b-2 border-transparent text-sm font-medium text-ink-faint transition-colors duration-150 ease-out hover:text-ink data-[on=true]:border-amber-500 data-[on=true]:text-ink"
+              >
+                <StarIcon
+                  aria-hidden
+                  className="size-3.5 transition-colors duration-150 ease-out in-data-[on=true]:fill-amber-500 in-data-[on=true]:text-amber-500"
+                />
+                Favorites
+                <span className="sr-only">{favorites ? "(on)" : "(off)"}</span>
+              </Link>
               <Link
                 href={qs({ view: unread ? null : "unread" })}
                 data-on={unread}
@@ -166,7 +192,17 @@ export default async function LibraryPage({ searchParams }: PageProps) {
                 <EmptyDescription>New saves land here until you open them.</EmptyDescription>
               </EmptyHeader>
             </Empty>
-          ) : type || slug || tag ? (
+          ) : favorites && !type && !slug && !tag ? (
+            <Empty className="mt-6">
+              <EmptyHeader>
+                <EmptyMedia variant="icon">
+                  <StarIcon />
+                </EmptyMedia>
+                <EmptyTitle>No favorites yet</EmptyTitle>
+                <EmptyDescription>Star a bookmark from its card or its page and it shows up here.</EmptyDescription>
+              </EmptyHeader>
+            </Empty>
+          ) : type || slug || tag || favorites ? (
             <Empty className="mt-6">
               <EmptyHeader>
                 <EmptyTitle>Nothing here yet</EmptyTitle>
@@ -211,7 +247,7 @@ export default async function LibraryPage({ searchParams }: PageProps) {
             categories={categories.map(({ id, name, color }) => ({ id, name, color }))}
             toolbar={
               <>
-                {unread && !slug && !type && !tag ? (
+                {unread && !slug && !type && !tag && !favorites ? (
                   <form action={markAllReadAction}>
                     <Button type="submit" variant="ghost" size="sm" className="text-ink-soft">
                       <CheckCheckIcon data-icon="inline-start" />

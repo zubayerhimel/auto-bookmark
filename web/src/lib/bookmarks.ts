@@ -1,6 +1,6 @@
 import "server-only";
 import { cache } from "react";
-import { and, asc, desc, eq, isNull, ne, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { BookmarkType } from "@/db/schema";
 import { UserError } from "./errors";
@@ -117,6 +117,7 @@ export const listFields = {
   error: schema.bookmark.error,
   createdAt: schema.bookmark.createdAt,
   readAt: schema.bookmark.readAt,
+  favoritedAt: schema.bookmark.favoritedAt,
   linkStatus: schema.bookmark.linkStatus,
   categoryLocked: schema.bookmark.categoryLocked,
   categoryId: schema.category.id,
@@ -140,6 +141,7 @@ export type BookmarkListItem = {
   error: string | null;
   createdAt: Date;
   readAt: Date | null;
+  favoritedAt: Date | null;
   linkStatus: "ok" | "dead" | null;
   categoryLocked: boolean;
   categoryId: string | null;
@@ -194,6 +196,7 @@ export async function listBookmarks(
     tag?: string;
     type?: BookmarkType;
     unread?: boolean;
+    favorites?: boolean;
     sort?: LibrarySort;
     /** From a previous page's `nextCursor`. */
     cursor?: string | null;
@@ -211,6 +214,7 @@ export async function listBookmarks(
   if (opts.tag) conds.push(sql`${schema.bookmark.tags} @> array[${opts.tag}]::text[]`);
   if (opts.type) conds.push(eq(schema.bookmark.type, opts.type));
   if (opts.unread) conds.push(isNull(schema.bookmark.readAt));
+  if (opts.favorites) conds.push(isNotNull(schema.bookmark.favoritedAt));
 
   const { key, type, descending } = SORT_KEYS[opts.sort ?? "newest"];
   if (opts.cursor) {
@@ -242,6 +246,7 @@ export function libraryQuery(params: {
   tag: string | null;
   type: BookmarkType | null;
   view: "unread" | null;
+  favorites: boolean | null;
   sort: LibrarySort;
 }) {
   return {
@@ -249,6 +254,7 @@ export function libraryQuery(params: {
     categorySlug: params.category && params.category !== "uncategorized" ? params.category : undefined,
     uncategorized: params.category === "uncategorized",
     tag: params.tag?.trim().toLowerCase() || undefined,
+    favorites: params.favorites === true,
     type: params.type ?? undefined,
     unread: params.view === "unread",
   };
@@ -372,6 +378,7 @@ export const libraryStats = cache(async (userId: string) => {
       // Ready but not yet filed: the AI is choosing a category (e.g. after their category was deleted).
       filing: sql<number>`count(*) filter (where ${schema.bookmark.status} = 'ready' and ${schema.bookmark.categoryId} is null and not ${schema.bookmark.categoryLocked})::int`,
       unread: sql<number>`count(*) filter (where ${schema.bookmark.readAt} is null)::int`,
+      favorites: sql<number>`count(*) filter (where ${schema.bookmark.favoritedAt} is not null)::int`,
       // Waiting with nothing working on them: the background job that should have was cut off.
       stalled: sql<number>`count(*) filter (where (${schema.bookmark.status} = 'pending' and ${schema.bookmark.updatedAt} < now() - interval '1 minute') or (${schema.bookmark.status} = 'processing' and ${schema.bookmark.updatedAt} < now() - interval '10 minutes'))::int`,
       working: sql<number>`count(*) filter (where ${schema.bookmark.status} = 'processing' and ${schema.bookmark.updatedAt} >= now() - interval '10 minutes')::int`,

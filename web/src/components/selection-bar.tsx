@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpenCheckIcon, BookOpenIcon, FolderInputIcon, Trash2Icon, XIcon } from "lucide-react";
+import { BookOpenCheckIcon, BookOpenIcon, FolderInputIcon, StarIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import {
@@ -103,6 +103,16 @@ export function SelectionBar({
         >
           {icon("unread", BookOpenCheckIcon)}
           Mark unread
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={!count || pending}
+          onClick={() => run({ kind: "favorite" }, (n) => `Added ${plural(n)} to favorites.`)}
+        >
+          {icon("favorite", StarIcon)}
+          Favorite
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>

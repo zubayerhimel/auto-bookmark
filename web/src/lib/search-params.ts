@@ -1,6 +1,7 @@
 import {
   createLoader,
   createSerializer,
+  parseAsBoolean,
   parseAsString,
   parseAsStringLiteral,
 } from "nuqs/server";
@@ -16,6 +17,8 @@ export const libraryParams = {
   tag: parseAsString,
   type: parseAsStringLiteral(BOOKMARK_KINDS),
   view: parseAsStringLiteral(["unread"] as const),
+  /** Only starred bookmarks; combines with every other filter. */
+  favorites: parseAsBoolean,
   sort: parseAsStringLiteral(LIBRARY_SORTS).withDefault("newest"),
   q: parseAsString.withDefault(""),
 };

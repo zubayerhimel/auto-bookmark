@@ -5,6 +5,7 @@ import {
   CircleAlertIcon,
   FileUpIcon,
   HashIcon,
+  KeyRoundIcon,
   LibraryIcon,
   MonitorIcon,
   MoonIcon,
@@ -89,6 +90,7 @@ const PAGES = [
   { label: "Tags", href: "/tags", Icon: HashIcon, keywords: "labels topics hashtags" },
   { label: "Import bookmarks", href: "/import", Icon: FileUpIcon, keywords: "chrome firefox pocket raindrop upload" },
   { label: "Browser extension", href: "/extension", Icon: PuzzleIcon, keywords: "chrome connect token install" },
+  { label: "AI settings", href: "/settings", Icon: KeyRoundIcon, keywords: "api key openai anthropic claude gemini openrouter model" },
 ];
 
 const THEMES = [

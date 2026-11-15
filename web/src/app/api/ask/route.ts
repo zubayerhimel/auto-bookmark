@@ -1,5 +1,7 @@
-import { streamAnswer } from "@/lib/ai";
+import { aiFailureMessage, streamAnswer } from "@/lib/ai";
+import { getAiConfig } from "@/lib/ai-settings";
 import { findSources } from "@/lib/ask";
+import { AI_UNAVAILABLE } from "@/lib/errors";
 import { TYPE_LABEL } from "@/lib/format";
 import { getRequestUserId } from "@/lib/session";
 
@@ -14,6 +16,9 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as { question?: unknown } | null;
   const question = typeof body?.question === "string" ? body.question.trim().slice(0, 500) : "";
   if (question.length < 3) return Response.json({ error: "Ask a question about what you've saved." }, { status: 400 });
+
+  const ai = await getAiConfig(userId);
+  if (!ai) return Response.json({ error: "Add your AI key in Settings to ask questions." }, { status: 400 });
 
   let sources;
   try {
@@ -49,6 +54,7 @@ export async function POST(req: Request) {
 
       try {
         const result = streamAnswer(
+          ai,
           question,
           sources.map((s) => ({
             title: s.title,
@@ -69,7 +75,11 @@ export async function POST(req: Request) {
       } catch (err) {
         if (!req.signal.aborted) {
           console.error("[ask] answer failed", err);
-          send({ type: "error", message: "The answer couldn't be written. Try asking again." });
+          const reason = aiFailureMessage(err, ai);
+          send({
+            type: "error",
+            message: reason === AI_UNAVAILABLE ? "The answer couldn't be written. Try asking again." : reason,
+          });
         }
       } finally {
         try {

@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import { AI_PROVIDERS } from "../lib/ai-providers";
 import {
   boolean,
   customType,
@@ -20,7 +21,7 @@ const tsvector = customType<{ data: string }>({
   },
 });
 
-// User ids are Clerk user ids ("user_…"). Only the app's server reads these tables; RLS is on with
+// User ids are Clerk user ids ("user_â€¦"). Only the app's server reads these tables; RLS is on with
 // no policies, so the public Supabase Data API can't read or write them.
 const userId = () => text("user_id").notNull();
 
@@ -88,6 +89,11 @@ export const bookmark = pgTable(
       .default("pending"),
     error: text("error"),
     embedding: vector("embedding", { dimensions: EMBEDDING_DIMENSIONS }),
+    /**
+     * The model that produced `embedding`, e.g. "openai/text-embedding-3-small". Vectors from
+     * different models can't be compared, so search only matches ones from the user's current model.
+     */
+    embeddingModel: text("embedding_model"),
     searchVector: tsvector("search_vector"),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at")
@@ -130,6 +136,24 @@ export const apiToken = pgTable(
   },
   (t) => [index("api_token_user_idx").on(t.userId)],
 ).enableRLS();
+
+export { AI_PROVIDERS, type AiProvider } from "../lib/ai-providers";
+
+/** Each user's own AI provider key. The key is encrypted with AI_KEY_SECRET and never sent back to the browser. */
+export const aiSettings = pgTable("ai_settings", {
+  userId: text("user_id").primaryKey(),
+  provider: text("provider", { enum: AI_PROVIDERS }).notNull(),
+  apiKeyEncrypted: text("api_key_encrypted").notNull(),
+  /** The key's last characters, so the user can tell which key is saved. */
+  keyHint: text("key_hint").notNull(),
+  /** Chat model id; null means the provider's default. */
+  model: text("model"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at")
+    .notNull()
+    .defaultNow()
+    .$onUpdate(() => new Date()),
+}).enableRLS();
 
 export type Bookmark = typeof bookmark.$inferSelect;
 export type Category = typeof category.$inferSelect;

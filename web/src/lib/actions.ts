@@ -5,12 +5,24 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { and, eq, inArray, isNull, ne, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
+import { AI_PROVIDERS, type AiProvider } from "@/db/schema";
+import { aiFailureMessage, configFor, testConfig } from "./ai";
+import { PROVIDERS } from "./ai-providers";
+import { getAiConfig, getAiSettings, removeAiSettings, saveAiSettings } from "./ai-settings";
 import { findSimilarBookmarks, libraryQuery, listBookmarks, saveBookmark } from "./bookmarks";
 import { findOrCreateCategory, pruneEmptyAiCategories, slugify, tidyName } from "./categories";
 import { importBookmarks, type ImportResult } from "./import";
-import { userMessage } from "./errors";
+import { AI_UNAVAILABLE, userMessage } from "./errors";
 import { checkBookmarkLink } from "./link-check";
-import { drainPending, processBookmarks, recategorizeAll, recategorizeBookmarks, refreshSavedCopy, refreshSearchVector } from "./pipeline";
+import {
+  drainPending,
+  processBookmarks,
+  recategorizeAll,
+  recategorizeBookmarks,
+  reembedLibrary,
+  refreshSavedCopy,
+  refreshSearchVector,
+} from "./pipeline";
 import { loadLibraryParams } from "./search-params";
 import { generateToken, hashToken, requireUser } from "./session";
 import { cleanTags } from "./tags";
@@ -452,12 +464,75 @@ export async function revokeExtensionTokenAction(id: string) {
   revalidatePath("/extension");
 }
 
+// ---------- AI key ----------
+
+/**
+ * Saves the user's AI provider, key and model after one test call proves they work. Leaving the
+ * key blank keeps the saved one (to change only the model). Bookmarks that failed or waited for a
+ * key are then processed, and a provider switch re-embeds the library for search.
+ */
+export async function saveAiSettingsAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  const provider = String(formData.get("provider") ?? "") as AiProvider;
+  if (!AI_PROVIDERS.includes(provider)) return { error: "Choose an AI provider." };
+  let apiKey = String(formData.get("apiKey") ?? "").trim();
+  const model = String(formData.get("model") ?? "").trim().slice(0, 200) || null;
+  if (/\s/.test(apiKey)) return { error: "That doesn't look like an API key: it contains spaces." };
+
+  if (!apiKey) {
+    const saved = await getAiSettings(user.id);
+    const current = saved?.provider === provider ? await getAiConfig(user.id) : null;
+    if (!current || current.source !== "user") return { error: "Paste your API key." };
+    apiKey = current.apiKey;
+  }
+
+  const ai = configFor(provider, apiKey, model);
+  try {
+    await testConfig(ai);
+  } catch (err) {
+    console.error("[ai-settings] key check failed", err);
+    const reason = aiFailureMessage(err, ai, { inSettings: true });
+    return {
+      error:
+        reason === AI_UNAVAILABLE
+          ? `Couldn't get an answer from ${PROVIDERS[provider].name} with this key and model. Check both and try again.`
+          : reason,
+    };
+  }
+
+  try {
+    await saveAiSettings(user.id, provider, apiKey, model);
+  } catch (err) {
+    console.error("[ai-settings] save failed", err);
+    return { error: userMessage(err, "Couldn't save the key. Try again.") };
+  }
+
+  await db
+    .update(schema.bookmark)
+    .set({ status: "pending", error: null })
+    .where(and(eq(schema.bookmark.userId, user.id), eq(schema.bookmark.status, "failed")));
+  after(async () => {
+    const started = Date.now();
+    await drainPending(user.id, PROCESSING_BUDGET_MS);
+    await reembedLibrary(user.id, PROCESSING_BUDGET_MS - (Date.now() - started));
+  });
+  refresh();
+  return { ok: true, message: "Key saved and working. Any bookmarks waiting for it are being summarized now." };
+}
+
+export async function removeAiSettingsAction(): Promise<ActionState> {
+  const user = await requireUser();
+  await removeAiSettings(user.id);
+  refresh();
+  return { ok: true, message: "Key removed. New bookmarks are saved but not summarized until you add one." };
+}
+
 // ---------- Account data ----------
 
 /** The word typed to confirm deleting everything. */
 const DELETE_ALL_CONFIRMATION = "delete";
 
-/** Deletes every bookmark, category and extension token the user has. The sign-in account itself stays. */
+/** Deletes every bookmark, category, extension token and saved AI key the user has. The sign-in account itself stays. */
 export async function deleteAllDataAction(confirmation: string): Promise<ActionState> {
   const user = await requireUser();
   if (confirmation.trim().toLowerCase() !== DELETE_ALL_CONFIRMATION) {
@@ -468,6 +543,7 @@ export async function deleteAllDataAction(confirmation: string): Promise<ActionS
       await tx.delete(schema.bookmark).where(eq(schema.bookmark.userId, user.id));
       await tx.delete(schema.category).where(eq(schema.category.userId, user.id));
       await tx.delete(schema.apiToken).where(eq(schema.apiToken.userId, user.id));
+      await tx.delete(schema.aiSettings).where(eq(schema.aiSettings.userId, user.id));
     });
   } catch (err) {
     console.error("[delete-all] failed", err);

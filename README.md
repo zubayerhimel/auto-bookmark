@@ -22,7 +22,7 @@ Requirements: Node 20+, pnpm, Docker (for the local Supabase stack).
 cd web
 pnpm install
 pnpm supabase start                  # local Supabase: API :54321, Postgres :54322, Studio :54323
-cp .env.example .env.local           # defaults match the local stack; add OPENROUTER_API_KEY
+cp .env.example .env.local           # defaults match the local stack; set AI_KEY_SECRET
 pnpm db:migrate
 pnpm dev                             # http://localhost:3000
 ```
@@ -45,7 +45,7 @@ Sign-in uses the Clerk development instance. Its keys live in `web/.env.local`; 
    | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | Clerk dashboard, API keys (production instance) |
    | `NEXT_PUBLIC_CLERK_SIGN_IN_URL`, `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-in`, `/sign-up` |
    | `DATABASE_URL` | Supabase, Connect, *Transaction pooler* string (port 6543) |
-   | `OPENROUTER_API_KEY` | [openrouter.ai/keys](https://openrouter.ai/keys) |
+   | `AI_KEY_SECRET` | Any long random string (e.g. `openssl rand -hex 32`); encrypts users' AI keys. Changing it makes saved keys unreadable, so users must add them again |
    | `CRON_SECRET` | Any long random string (e.g. `openssl rand -hex 32`); protects the daily job |
 
    The Vercel Supabase integration's `POSTGRES_URL` is used when `DATABASE_URL` is absent.
@@ -60,18 +60,31 @@ Sign-in uses the Clerk development instance. Its keys live in `web/.env.local`; 
 
 ### AI settings
 
-AI runs through [OpenRouter](https://openrouter.ai) by default, using `openai/gpt-5.4-mini` for
-summaries, categories and search, and `openai/text-embedding-3-small` for search vectors. Override
-them with `AI_MODEL` and `AI_EMBEDDING_MODEL` (any OpenRouter model id; the embedding model must
-return 1536 dimensions). The OpenRouter account needs credit for paid models.
+Each user brings their own AI key on the **AI settings** page (`/settings`): OpenAI, Anthropic
+(Claude), Google (Gemini) or OpenRouter (any model). The key is checked with one tiny request, then
+stored encrypted (AES-256-GCM with `AI_KEY_SECRET`) and used only for that user's bookmarks. It is
+never sent back to the browser. Until a user adds a key, their links are saved and read but not
+summarized; adding one processes everything that was waiting. Provider errors the user can act on
+(rejected key, no credits, unknown model) are shown on the bookmark and in settings.
 
-To call a provider directly instead, set `AI_PROVIDER` to `openai` (`OPENAI_API_KEY`) or `google`
-(`GOOGLE_GENERATIVE_AI_API_KEY`).
+| Provider | Default chat model | Search vectors |
+| --- | --- | --- |
+| OpenAI | `gpt-5.4-mini` | `text-embedding-3-small` |
+| Anthropic | `claude-haiku-5-5` | none: search matches keywords only |
+| Google | `gemini-3.5-flash` | `gemini-embedding-001` (1536 dimensions) |
+| OpenRouter | `openai/gpt-5.4-mini` | `openai/text-embedding-3-small` |
 
-Embeddings are stored as 1536-dimension vectors. If you switch embedding provider after saving
-bookmarks, use **Reprocess** on items (or re-save them) so search vectors stay comparable. Search's
-relevance cutoffs (top of `web/src/lib/search.ts`) are tuned for `text-embedding-3-small`; other
-embedding models may need different values.
+Users can pick another chat model. Each bookmark records which embedding model made its vector, and
+search only compares vectors from the user's current model. After switching provider, the library is
+re-embedded in the background; until then, older bookmarks are found by keywords. Search's relevance
+cutoffs (top of `web/src/lib/search.ts`) are tuned for `text-embedding-3-small`; other embedding
+models may need different values.
+
+To let users without a key share the server's own key (a private, self-hosted setup), set
+`AI_USE_SERVER_KEY=true` plus `OPENROUTER_API_KEY` (or `AI_PROVIDER` = `openai`, `google` or
+`anthropic` with `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY` or `ANTHROPIC_API_KEY`).
+`AI_MODEL` and `AI_EMBEDDING_MODEL` override that key's models. It's off by default, so a public
+deployment never spends the operator's credits.
 
 ### Security
 
@@ -193,10 +206,11 @@ To run the job by hand: `curl -H "Authorization: Bearer $CRON_SECRET" <app addre
 
 | Path | Purpose |
 | --- | --- |
-| `web/src/db/schema.ts` | Tables: `category`, `bookmark` (vector + tsvector), `api_token`; `user_id` is the Clerk user id |
+| `web/src/db/schema.ts` | Tables: `category`, `bookmark` (vector + tsvector), `api_token`, `ai_settings`; `user_id` is the Clerk user id |
 | `web/src/proxy.ts`, `web/src/lib/session.ts` | Clerk middleware; session and extension-token checks |
 | `web/src/lib/extract.ts` | URL normalization, safe fetching, page/X/YouTube extraction |
-| `web/src/lib/ai.ts` | Prompts and models: analyze, classify, plan search, embed |
+| `web/src/lib/ai.ts` | Prompts and models: analyze, classify, plan search, embed; provider error messages |
+| `web/src/lib/ai-settings.ts`, `web/src/lib/secret-box.ts` | Each user's AI key: encrypted storage and lookup |
 | `web/src/lib/pipeline.ts` | Background processing (claims each bookmark atomically; `drainPending` resumes waiting ones) and re-categorization |
 | `web/src/lib/import-parse.ts`, `web/src/lib/import.ts` | Import: parsing exports in the browser; adding the links server-side |
 | `web/src/lib/share.ts`, `web/src/app/(app)/share/page.tsx` | Share target: saving links shared from a phone |

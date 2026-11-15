@@ -1,9 +1,10 @@
 import "server-only";
 import { and, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { db, schema } from "@/db";
-import { analyzeContent, classifyItem, embedText } from "./ai";
+import { aiFailureMessage, analyzeContent, classifyItem, embeddingSpace, embedText, type AiConfig } from "./ai";
+import { AI_KEY_MISSING, getAiConfig } from "./ai-settings";
 import { findOrCreateCategory, listCategoryHints, pruneEmptyAiCategories } from "./categories";
-import { AI_UNAVAILABLE, PROCESSING_FAILED, UserError, userMessage } from "./errors";
+import { PROCESSING_FAILED, UserError, userMessage } from "./errors";
 import { extractFromUrl, socialSite } from "./extract";
 
 /** Small in-process concurrency gate so bulk jobs don't fire hundreds of AI calls at once. */
@@ -24,13 +25,39 @@ function createLimiter(max: number) {
 
 const limit = createLimiter(3);
 
-/** Runs an AI call; its failure (credits, rate limits, outages) reaches the user only as a general message. */
-async function aiStep<T>(task: () => Promise<T>): Promise<T> {
+/**
+ * Runs an AI call. Its failure reaches the user only as a message written for them: what to fix
+ * when it's their own key (rejected, out of credits), a general one otherwise.
+ */
+async function aiStep<T>(ai: AiConfig, task: () => Promise<T>): Promise<T> {
   try {
     return await task();
   } catch (err) {
-    throw new UserError(AI_UNAVAILABLE, { cause: err });
+    throw new UserError(aiFailureMessage(err, ai), { cause: err });
   }
+}
+
+/** The text a bookmark's embedding is made from. */
+function embeddingInput(b: {
+  title: string | null;
+  author: string | null;
+  summary: string | null;
+  keyPoints: string[] | null;
+  tags: string[];
+  note: string | null;
+  content: string | null;
+}) {
+  return [
+    b.title,
+    b.author && `By ${b.author}`,
+    b.summary,
+    b.keyPoints?.join("\n"),
+    `Tags: ${b.tags.join(", ")}`,
+    b.note,
+    b.content?.slice(0, 2000),
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export async function refreshSearchVector(id: string) {
@@ -124,8 +151,10 @@ export async function processBookmark(id: string) {
       await refreshSearchVector(id);
     }
 
+    const ai = await getAiConfig(item.userId);
+    if (!ai) throw new UserError(AI_KEY_MISSING);
     const categories = await listCategoryHints(item.userId);
-    const analysis = await aiStep(() => analyzeContent(item, categories));
+    const analysis = await aiStep(ai, () => analyzeContent(ai, item, categories));
 
     let categoryId = item.categoryId;
     if (!item.categoryLocked) {
@@ -142,20 +171,13 @@ export async function processBookmark(id: string) {
       ? b.tags
       : [...new Set([...kept, ...analysis.tags].map((t) => t.toLowerCase().trim()).filter(Boolean))].slice(0, 10);
 
-    const embedding = await aiStep(() => embedText(
-      [
-        title,
-        item.author && `By ${item.author}`,
-        analysis.summary,
-        analysis.keyPoints.join("\n"),
-        `Tags: ${tags.join(", ")}`,
-        item.note,
-        item.content?.slice(0, 2000),
-      ]
-        .filter(Boolean)
-        .join("\n"),
-      "document",
-    ));
+    const embedding = await aiStep(ai, () =>
+      embedText(
+        ai,
+        embeddingInput({ ...item, title, summary: analysis.summary, keyPoints: analysis.keyPoints, tags }),
+        "document",
+      ),
+    );
 
     await db
       .update(schema.bookmark)
@@ -172,6 +194,7 @@ export async function processBookmark(id: string) {
         tags,
         categoryId,
         embedding,
+        embeddingModel: embedding ? embeddingSpace(ai) : null,
         status: "ready",
         error: null,
         processedAt: new Date(),
@@ -224,6 +247,8 @@ export async function drainPending(userId: string | null, budgetMs: number) {
  * AI-made ones are rebuilt from scratch so an over-broad category can't keep absorbing everything.
  */
 export async function recategorizeAll(userId: string) {
+  const ai = await getAiConfig(userId);
+  if (!ai) return;
   const items = await db
     .select({
       id: schema.bookmark.id,
@@ -250,7 +275,7 @@ export async function recategorizeAll(userId: string) {
           const categories = (await listCategoryHints(userId)).filter(
             (c) => c.source === "user" || chosenThisRun.has(c.id),
           );
-          const choice = await classifyItem(item, categories);
+          const choice = await classifyItem(ai, item, categories);
           const category = await findOrCreateCategory(userId, choice, "ai");
           chosenThisRun.add(category.id);
           await db
@@ -269,6 +294,7 @@ export async function recategorizeAll(userId: string) {
 /** Re-files only the given bookmarks (e.g. after their category was deleted). */
 export async function recategorizeBookmarks(userId: string, ids: string[]) {
   if (!ids.length) return;
+  const ai = await getAiConfig(userId);
   const items = await db
     .select({
       id: schema.bookmark.id,
@@ -282,7 +308,8 @@ export async function recategorizeBookmarks(userId: string, ids: string[]) {
   for (const item of items) {
     await limit(async () => {
       try {
-        const choice = await classifyItem(item, await listCategoryHints(userId));
+        if (!ai) throw new UserError(AI_KEY_MISSING);
+        const choice = await classifyItem(ai, item, await listCategoryHints(userId));
         const category = await findOrCreateCategory(userId, choice, "ai");
         await db
           .update(schema.bookmark)
@@ -299,4 +326,65 @@ export async function recategorizeBookmarks(userId: string, ids: string[]) {
       }
     });
   }
+}
+
+/**
+ * Brings every summarized bookmark's embedding onto the user's current embedding model, after
+ * they switch AI provider. Vectors from different models can't be compared, so until a bookmark
+ * is redone, search finds it by keywords only. Leftovers are redone the next time this runs.
+ */
+export async function reembedLibrary(userId: string, budgetMs: number) {
+  const ai = await getAiConfig(userId);
+  const space = ai ? embeddingSpace(ai) : null;
+  if (!ai || !space) return 0;
+  const deadline = Date.now() + budgetMs;
+  const tried = new Set<string>();
+  let done = 0;
+  while (Date.now() < deadline) {
+    const rows = await db
+      .select({
+        id: schema.bookmark.id,
+        title: schema.bookmark.title,
+        author: schema.bookmark.author,
+        summary: schema.bookmark.summary,
+        keyPoints: schema.bookmark.keyPoints,
+        tags: schema.bookmark.tags,
+        note: schema.bookmark.note,
+        content: schema.bookmark.content,
+      })
+      .from(schema.bookmark)
+      .where(
+        and(
+          eq(schema.bookmark.userId, userId),
+          eq(schema.bookmark.status, "ready"),
+          sql`${schema.bookmark.embeddingModel} is distinct from ${space}`,
+        ),
+      )
+      .orderBy(desc(schema.bookmark.createdAt))
+      .limit(12);
+    const batch = rows.filter((r) => !tried.has(r.id));
+    if (!batch.length) break;
+    let failures = 0;
+    await Promise.all(
+      batch.map((b) =>
+        limit(async () => {
+          tried.add(b.id);
+          try {
+            const embedding = await embedText(ai, embeddingInput(b), "document");
+            await db
+              .update(schema.bookmark)
+              .set({ embedding, embeddingModel: space })
+              .where(eq(schema.bookmark.id, b.id));
+            done++;
+          } catch (err) {
+            failures++;
+            console.error(`[reembed] ${b.id}`, err);
+          }
+        }),
+      ),
+    );
+    // A bad key or empty account fails every call; stop instead of burning through the library.
+    if (failures === batch.length) break;
+  }
+  return done;
 }

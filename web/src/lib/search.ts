@@ -2,7 +2,8 @@ import "server-only";
 import { eq, inArray, sql, type SQL } from "drizzle-orm";
 import { db, schema } from "@/db";
 import type { BookmarkType } from "@/db/schema";
-import { embedText, planSearch, type QueryPlan } from "./ai";
+import { embeddingSpace, embedText, planSearch, type QueryPlan } from "./ai";
+import { getAiConfig } from "./ai-settings";
 import { listFields, type BookmarkListItem } from "./bookmarks";
 
 export type SearchResult = {
@@ -47,14 +48,18 @@ export async function searchBookmarks(
   const q = query.trim().slice(0, 500);
   if (!q) return { results: [], understood: null, terms: [] };
 
-  const categories = await db
-    .select({ id: schema.category.id, name: schema.category.name })
-    .from(schema.category)
-    .where(eq(schema.category.userId, userId));
+  const [categories, ai] = await Promise.all([
+    db
+      .select({ id: schema.category.id, name: schema.category.name })
+      .from(schema.category)
+      .where(eq(schema.category.userId, userId)),
+    // Without an AI key, search still works on keywords alone.
+    getAiConfig(userId),
+  ]);
 
   let plan: QueryPlan | null = null;
-  if (q.split(/\s+/).length >= 3) {
-    plan = await planSearch(q, categories.map((c) => c.name)).catch((err) => {
+  if (ai && q.split(/\s+/).length >= 3) {
+    plan = await planSearch(ai, q, categories.map((c) => c.name)).catch((err) => {
       console.error("[search] planning failed", err);
       return null;
     });
@@ -76,18 +81,24 @@ export async function searchBookmarks(
   if (before) filters.push(sql`b.created_at < ${new Date(before.getTime() + 86_400_000)}`);
   const where = sql.join(filters, sql` and `);
 
-  const embedding = await embedText(searchText, "query").catch((err) => {
-    console.error("[search] embedding failed, falling back to keywords", err);
-    return null;
-  });
+  const space = ai ? embeddingSpace(ai) : null;
+  const embedding =
+    ai && space
+      ? await embedText(ai, searchText, "query").catch((err) => {
+          console.error("[search] embedding failed, falling back to keywords", err);
+          return null;
+        })
+      : null;
 
   // Bookmarks with every word rank first and are always kept, so exact names and IDs still match.
   // Partial (any-word) matches are kept only when the embedding says they're related too.
   const allWords = sql`nullif(plainto_tsquery('english', ${searchText})::text, '')::tsquery`;
   const anyWord = sql`nullif(replace(plainto_tsquery('english', ${searchText})::text, ' & ', ' | '), '')::tsquery`;
   const vector = embedding ? JSON.stringify(embedding) : null;
+  // Vectors from another embedding model (before a provider switch) aren't comparable.
+  const comparable = sql`b.embedding_model = ${space}`;
   const partialFilter = vector
-    ? sql`(b.embedding <=> ${vector}::vector) <= ${PARTIAL_KEYWORD_MAX_DISTANCE}`
+    ? sql`(${comparable} and (b.embedding <=> ${vector}::vector) <= ${PARTIAL_KEYWORD_MAX_DISTANCE})`
     : sql`true`;
 
   const semantic = vector
@@ -95,7 +106,7 @@ export async function searchBookmarks(
       sem as (
         select b.id, b.embedding <=> ${vector}::vector as dist
         from ${schema.bookmark} b
-        where ${where} and b.embedding is not null
+        where ${where} and b.embedding is not null and ${comparable}
         order by dist
         limit 40
       ),

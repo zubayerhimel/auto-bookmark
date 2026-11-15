@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { SearchParams } from "nuqs/server";
 import type { BookmarkType } from "@/db/schema";
-import { BookmarkPlusIcon, CheckCheckIcon, CircleAlertIcon, FileUpIcon, PuzzleIcon, RotateCwIcon, StarIcon, XIcon } from "lucide-react";
+import { BookmarkPlusIcon, CheckCheckIcon, CircleAlertIcon, FileUpIcon, KeyRoundIcon, PuzzleIcon, RotateCwIcon, StarIcon, XIcon } from "lucide-react";
 import { AddLinkForm } from "@/components/add-link-form";
 import { BookmarkFeed } from "@/components/bookmark-feed";
 import { SortMenu } from "@/components/sort-menu";
@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { markAllReadAction, retryFailedAction } from "@/lib/actions";
+import { getAiConfig } from "@/lib/ai-settings";
 import { getCategoryBySlug, libraryQuery, listBookmarks, listCategoriesWithCounts } from "@/lib/bookmarks";
 import { libraryHref, loadLibraryParams } from "@/lib/search-params";
 import { requireUser } from "@/lib/session";
@@ -48,10 +49,11 @@ export default async function LibraryPage({ searchParams }: PageProps) {
   const tag = query.tag ?? null;
   const favorites = query.favorites || null;
 
-  const [category, { items, nextCursor }, categories] = await Promise.all([
+  const [category, { items, nextCursor }, categories, ai] = await Promise.all([
     query.categorySlug ? getCategoryBySlug(user.id, query.categorySlug) : null,
     listBookmarks(user.id, query),
     listCategoriesWithCounts(user.id),
+    getAiConfig(user.id),
   ]);
   if (query.categorySlug && !category) notFound();
   const failed = items.filter((i) => i.status === "failed").length;
@@ -163,7 +165,21 @@ export default async function LibraryPage({ searchParams }: PageProps) {
           </ul>
         </nav>
 
-        {failed > 0 ? (
+        {!ai ? (
+          <Alert className="mt-4">
+            <KeyRoundIcon />
+            <AlertTitle>Add your AI key to get summaries.</AlertTitle>
+            <AlertDescription>
+              Links are saved, but they&apos;re summarized, tagged and filed with your own OpenAI, Claude, Gemini or
+              OpenRouter key.
+            </AlertDescription>
+            <AlertAction>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/settings">Add key</Link>
+              </Button>
+            </AlertAction>
+          </Alert>
+        ) : failed > 0 ? (
           <Alert variant="destructive" className="mt-4">
             <CircleAlertIcon />
             <AlertTitle>

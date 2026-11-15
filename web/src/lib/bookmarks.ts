@@ -377,6 +377,7 @@ export async function relatedBookmarks(userId: string, id: string, limit = 5) {
         eq(schema.bookmark.userId, userId),
         ne(schema.bookmark.id, id),
         sql`${schema.bookmark.embedding} is not null`,
+        sql`${schema.bookmark.embeddingModel} = ${source(sql`s.embedding_model`)}`,
         sql`(${distance} <= ${RELATED_ON_ITS_OWN} or (${distance} <= ${RELATED_WITH_SHARED_TOPIC} and (${sameCategory} or ${sharedTag})))`,
       ),
     )

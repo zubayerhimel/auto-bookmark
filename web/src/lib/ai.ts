@@ -1,61 +1,157 @@
 import "server-only";
-import { embed, generateText, Output, streamText, type EmbeddingModel, type LanguageModel } from "ai";
+import {
+  APICallError,
+  embed,
+  generateText,
+  Output,
+  RetryError,
+  streamText,
+  type EmbeddingModel,
+  type LanguageModel,
+} from "ai";
+import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
-import { EMBEDDING_DIMENSIONS, type BookmarkType } from "@/db/schema";
+import { EMBEDDING_DIMENSIONS, type AiProvider, type BookmarkType } from "@/db/schema";
+import { PROVIDERS } from "./ai-providers";
+import { AI_UNAVAILABLE } from "./errors";
 
-type Provider = "openrouter" | "openai" | "google";
+/** Which provider, key and models to call for one user. */
+export type AiConfig = {
+  provider: AiProvider;
+  apiKey: string;
+  model: string;
+  /** Null when the provider can't embed (Anthropic): search then uses keywords only. */
+  embeddingModel: string | null;
+  /** "user" for the user's own key; "server" for the optional shared key in the environment. */
+  source: "user" | "server";
+};
 
-const API_KEYS: Record<Provider, string> = {
+export function configFor(provider: AiProvider, apiKey: string, model?: string | null): AiConfig {
+  const info = PROVIDERS[provider];
+  return {
+    provider,
+    apiKey,
+    model: model?.trim() || info.defaultModel,
+    embeddingModel: info.embeddingModel,
+    source: "user",
+  };
+}
+
+const SERVER_KEYS: Partial<Record<AiProvider, string>> = {
   openrouter: "OPENROUTER_API_KEY",
   openai: "OPENAI_API_KEY",
   google: "GOOGLE_GENERATIVE_AI_API_KEY",
+  anthropic: "ANTHROPIC_API_KEY",
 };
 
-const DEFAULT_MODELS: Record<Provider, { chat: string; embedding: string }> = {
-  openrouter: { chat: "openai/gpt-5.4-mini", embedding: "openai/text-embedding-3-small" },
-  openai: { chat: "gpt-5.4-mini", embedding: "text-embedding-3-small" },
-  google: { chat: "gemini-3.5-flash", embedding: "gemini-embedding-001" },
-};
-
-function provider(): Provider {
-  const chosen = process.env.AI_PROVIDER;
-  if (chosen === "openrouter" || chosen === "openai" || chosen === "google") return chosen;
-  return "openrouter";
+/**
+ * The server's own key, for users who haven't added theirs. Off unless AI_USE_SERVER_KEY=true, so
+ * a public deployment never spends the operator's credits on other people's bookmarks.
+ */
+export function serverConfig(): AiConfig | null {
+  if (process.env.AI_USE_SERVER_KEY !== "true") return null;
+  const chosen = process.env.AI_PROVIDER as AiProvider | undefined;
+  const provider: AiProvider = chosen && chosen in PROVIDERS ? chosen : "openrouter";
+  const apiKey = process.env[SERVER_KEYS[provider]!];
+  if (!apiKey) return null;
+  const info = PROVIDERS[provider];
+  return {
+    provider,
+    apiKey,
+    model: process.env.AI_MODEL || info.defaultModel,
+    embeddingModel: info.embeddingModel ? process.env.AI_EMBEDDING_MODEL || info.embeddingModel : null,
+    source: "server",
+  };
 }
 
-function assertConfigured() {
-  const key = API_KEYS[provider()];
-  if (!process.env[key]) throw new Error(`AI is not set up: add ${key} to web/.env.local and restart the app.`);
+/**
+ * A stable name for the embedding model, stored next to each vector. OpenAI's model reached
+ * directly or through OpenRouter is the same model, so both give "openai/text-embedding-3-small".
+ */
+export function embeddingSpace(ai: AiConfig): string | null {
+  if (!ai.embeddingModel) return null;
+  if (ai.provider === "openrouter") return ai.embeddingModel;
+  return `${ai.provider}/${ai.embeddingModel}`;
 }
 
-function openrouter() {
-  return createOpenRouter({ appName: "Auto Bookmark" });
+function languageModel(ai: AiConfig): LanguageModel {
+  const { apiKey } = ai;
+  switch (ai.provider) {
+    case "openrouter":
+      return createOpenRouter({ apiKey, appName: "Auto Bookmark" })(ai.model);
+    case "anthropic":
+      return createAnthropic({ apiKey })(ai.model);
+    case "google":
+      return createGoogleGenerativeAI({ apiKey })(ai.model);
+    case "openai":
+      return createOpenAI({ apiKey })(ai.model);
+  }
 }
 
-function languageModel(): LanguageModel {
-  assertConfigured();
-  const p = provider();
-  const id = process.env.AI_MODEL || DEFAULT_MODELS[p].chat;
-  if (p === "openrouter") return openrouter()(id);
-  if (p === "google") return createGoogleGenerativeAI()(id);
-  return createOpenAI()(id);
+function embeddingModel(ai: AiConfig): EmbeddingModel | null {
+  const { apiKey, embeddingModel: id } = ai;
+  if (!id) return null;
+  switch (ai.provider) {
+    case "openrouter":
+      return createOpenRouter({ apiKey, appName: "Auto Bookmark" }).textEmbeddingModel(id);
+    case "google":
+      return createGoogleGenerativeAI({ apiKey }).embeddingModel(id);
+    case "openai":
+      return createOpenAI({ apiKey }).embeddingModel(id);
+    case "anthropic":
+      return null;
+  }
 }
 
-function embeddingModel(): EmbeddingModel {
-  assertConfigured();
-  const p = provider();
-  const id = process.env.AI_EMBEDDING_MODEL || DEFAULT_MODELS[p].embedding;
-  if (p === "openrouter") return openrouter().textEmbeddingModel(id);
-  if (p === "google") return createGoogleGenerativeAI().embeddingModel(id);
-  return createOpenAI().embeddingModel(id);
+/**
+ * A message for the user about a failed AI call. With their own key, the user can act on the
+ * provider's answer (bad key, no credits), so it's named. Raw provider text is never shown.
+ */
+export function aiFailureMessage(err: unknown, ai: AiConfig | null, { inSettings = false } = {}) {
+  if (!ai || ai.source !== "user") return AI_UNAVAILABLE;
+  const cause = RetryError.isInstance(err) ? err.lastError : err;
+  const call = APICallError.isInstance(cause) ? cause : null;
+  // Google answers a bad key with 400 rather than 401, and Anthropic an empty balance with 400.
+  const body = call?.responseBody ?? "";
+  const status =
+    call?.statusCode === 400 && /API_KEY_INVALID|api key not valid/i.test(body)
+      ? 401
+      : call?.statusCode === 400 && /credit balance/i.test(body)
+        ? 402
+        : call?.statusCode;
+  const { name } = PROVIDERS[ai.provider];
+  const check = (what: string) => (inSettings ? "" : ` Check ${what} in Settings.`);
+  switch (status) {
+    case 401:
+    case 403:
+      return `${name} rejected your API key.${check("it")}`;
+    case 402:
+      return `Your ${name} account is out of credits. Add credits with ${name}, then try again.`;
+    case 429:
+      return `${name} is rate-limiting your key or its quota is used up. Try again in a while.`;
+    case 400:
+    case 404:
+      return `${name} couldn't run the model “${ai.model}”.${check("the model")}`;
+    default:
+      return AI_UNAVAILABLE;
+  }
 }
 
-export async function embedText(value: string, purpose: "document" | "query") {
+/** One tiny request per model, to check a key before it's saved. Throws what the provider answered. */
+export async function testConfig(ai: AiConfig) {
+  await generateText({ model: languageModel(ai), prompt: "Reply with the word OK.", maxOutputTokens: 64 });
+  if (ai.embeddingModel) await embedText(ai, "test", "query");
+}
+
+/** Null when the provider has no embedding model. */
+export async function embedText(ai: AiConfig, value: string, purpose: "document" | "query") {
+  const model = embeddingModel(ai);
+  if (!model) return null;
   const { embedding } = await embed({
-    model: embeddingModel(),
+    model,
     value: value.slice(0, 8000),
     providerOptions: {
       openai: { dimensions: EMBEDDING_DIMENSIONS },
@@ -67,7 +163,7 @@ export async function embedText(value: string, purpose: "document" | "query") {
   });
   if (embedding.length !== EMBEDDING_DIMENSIONS) {
     throw new Error(
-      `The embedding model returned ${embedding.length} dimensions; pick one that returns ${EMBEDDING_DIMENSIONS} (AI_EMBEDDING_MODEL).`,
+      `The embedding model returned ${embedding.length} dimensions; pick one that returns ${EMBEDDING_DIMENSIONS}.`,
     );
   }
   return embedding;
@@ -135,6 +231,7 @@ const analysisSchema = z.object({
 export type Analysis = z.infer<typeof analysisSchema>;
 
 export async function analyzeContent(
+  ai: AiConfig,
   item: {
     url: string;
     type: BookmarkType;
@@ -162,7 +259,7 @@ export async function analyzeContent(
     .join("\n");
 
   const { output } = await generateText({
-    model: languageModel(),
+    model: languageModel(ai),
     output: Output.object({ schema: analysisSchema }),
     maxOutputTokens: 2000,
     instructions: `You organize a person's personal bookmark library. For each saved item you write a
@@ -181,11 +278,12 @@ ${describeCategories(categories)}`,
 const classificationSchema = z.object(categoryDecision);
 
 export async function classifyItem(
+  ai: AiConfig,
   item: { title: string | null; summary: string | null; tags: string[]; url: string },
   categories: CategoryHint[],
 ) {
   const { output } = await generateText({
-    model: languageModel(),
+    model: languageModel(ai),
     output: Output.object({ schema: classificationSchema }),
     maxOutputTokens: 500,
     instructions: `You file items in a personal bookmark library under exactly one category.
@@ -212,9 +310,9 @@ const queryPlanSchema = z.object({
 export type QueryPlan = z.infer<typeof queryPlanSchema>;
 
 /** Turns "that youtube video about rust I saved last month" into filters + a search phrase. */
-export async function planSearch(query: string, categories: string[]): Promise<QueryPlan> {
+export async function planSearch(ai: AiConfig, query: string, categories: string[]): Promise<QueryPlan> {
   const { output } = await generateText({
-    model: languageModel(),
+    model: languageModel(ai),
     output: Output.object({ schema: queryPlanSchema }),
     maxOutputTokens: 500,
     instructions: `You turn a natural-language request for something in a personal bookmark library into search filters.
@@ -242,7 +340,7 @@ export type AnswerSource = {
  * Writes a short answer to a question using only the user's saved bookmarks, citing them as [n].
  * Sources are numbered in the order given, starting at 1.
  */
-export function streamAnswer(question: string, sources: AnswerSource[], abortSignal?: AbortSignal) {
+export function streamAnswer(ai: AiConfig, question: string, sources: AnswerSource[], abortSignal?: AbortSignal) {
   const context = sources
     .map((s, i) =>
       [
@@ -258,7 +356,7 @@ export function streamAnswer(question: string, sources: AnswerSource[], abortSig
     .join("\n\n");
 
   return streamText({
-    model: languageModel(),
+    model: languageModel(ai),
     maxOutputTokens: 900,
     abortSignal,
     instructions: `You answer questions about a person's own bookmark library, using only the saved items below.

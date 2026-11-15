@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQueryStates } from "nuqs";
 import { Suspense } from "react";
-import { BookOpenIcon, FileUpIcon, HashIcon, LibraryIcon, PuzzleIcon, SearchIcon, StarIcon, TagsIcon } from "lucide-react";
+import { BookOpenIcon, FileUpIcon, HashIcon, KeyRoundIcon, LibraryIcon, PuzzleIcon, SearchIcon, StarIcon, TagsIcon } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { openCommandPalette, PaletteShortcut } from "@/components/command-palette";
 import { LogoMark } from "@/components/logo";
@@ -213,6 +213,14 @@ export function AppSidebar(props: Props) {
               <Link href="/extension" onClick={close}>
                 <PuzzleIcon />
                 <span>Browser extension</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname === "/settings"}>
+              <Link href="/settings" onClick={close}>
+                <KeyRoundIcon />
+                <span>AI settings</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

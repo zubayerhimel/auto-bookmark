@@ -72,7 +72,7 @@ export function DeleteAllData({ total }: { total: number }) {
             <AlertDialogTitle>Delete everything?</AlertDialogTitle>
             <AlertDialogDescription>
               {total === 1 ? "Your bookmark" : `All ${total.toLocaleString()} bookmarks`}, with their summaries, notes
-              and tags, plus your categories and extension sign-ins, are removed for good. Your account stays.
+              and tags, plus your categories, extension sign-ins and saved AI key, are removed for good. Your account stays.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <Field data-invalid={error ? true : undefined} className="gap-1.5">

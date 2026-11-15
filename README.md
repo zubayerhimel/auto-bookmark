@@ -61,7 +61,7 @@ Sign-in uses the Clerk development instance. Its keys live in `web/.env.local`; 
 ### AI settings
 
 Each user brings their own AI key on the **AI settings** page (`/settings`): OpenAI, Anthropic
-(Claude), Google (Gemini) or OpenRouter (any model). The key is checked with one tiny request, then
+(Claude), Google (Gemini, an AI Studio key), Groq or OpenRouter (any model). The key is checked with one tiny request, then
 stored encrypted (AES-256-GCM with `AI_KEY_SECRET`) and used only for that user's bookmarks. It is
 never sent back to the browser. Until a user adds a key, their links are saved and read but not
 summarized; adding one processes everything that was waiting. Provider errors the user can act on
@@ -72,6 +72,7 @@ summarized; adding one processes everything that was waiting. Provider errors th
 | OpenAI | `gpt-5.4-mini` | `text-embedding-3-small` |
 | Anthropic | `claude-haiku-5-5` | none: search matches keywords only |
 | Google | `gemini-3.5-flash` | `gemini-embedding-001` (1536 dimensions) |
+| Groq | `openai/gpt-oss-120b` | none: search matches keywords only |
 | OpenRouter | `openai/gpt-5.4-mini` | `openai/text-embedding-3-small` |
 
 Users can pick another chat model. Each bookmark records which embedding model made its vector, and
@@ -81,8 +82,8 @@ cutoffs (top of `web/src/lib/search.ts`) are tuned for `text-embedding-3-small`;
 models may need different values.
 
 To let users without a key share the server's own key (a private, self-hosted setup), set
-`AI_USE_SERVER_KEY=true` plus `OPENROUTER_API_KEY` (or `AI_PROVIDER` = `openai`, `google` or
-`anthropic` with `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY` or `ANTHROPIC_API_KEY`).
+`AI_USE_SERVER_KEY=true` plus `OPENROUTER_API_KEY` (or `AI_PROVIDER` = `openai`, `google`, `groq` or
+`anthropic` with `OPENAI_API_KEY`, `GOOGLE_GENERATIVE_AI_API_KEY`, `GROQ_API_KEY` or `ANTHROPIC_API_KEY`).
 `AI_MODEL` and `AI_EMBEDDING_MODEL` override that key's models. It's off by default, so a public
 deployment never spends the operator's credits.
 

@@ -5,12 +5,15 @@ import {
   generateText,
   Output,
   RetryError,
+  defaultSettingsMiddleware,
   streamText,
+  wrapLanguageModel,
   type EmbeddingModel,
   type LanguageModel,
 } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { z } from "zod";
@@ -23,7 +26,7 @@ export type AiConfig = {
   provider: AiProvider;
   apiKey: string;
   model: string;
-  /** Null when the provider can't embed (Anthropic): search then uses keywords only. */
+  /** Null when the provider can't embed (Anthropic, Groq): search then uses keywords only. */
   embeddingModel: string | null;
   /** "user" for the user's own key; "server" for the optional shared key in the environment. */
   source: "user" | "server";
@@ -45,6 +48,7 @@ const SERVER_KEYS: Partial<Record<AiProvider, string>> = {
   openai: "OPENAI_API_KEY",
   google: "GOOGLE_GENERATIVE_AI_API_KEY",
   anthropic: "ANTHROPIC_API_KEY",
+  groq: "GROQ_API_KEY",
 };
 
 /**
@@ -86,6 +90,16 @@ function languageModel(ai: AiConfig): LanguageModel {
       return createAnthropic({ apiKey })(ai.model);
     case "google":
       return createGoogleGenerativeAI({ apiKey })(ai.model);
+    case "groq": {
+      const model = createGroq({ apiKey })(ai.model);
+      // GPT-OSS reasons before answering, and that counts toward each call's output cap. Other Groq
+      // models reject the setting.
+      if (!ai.model.includes("gpt-oss")) return model;
+      return wrapLanguageModel({
+        model,
+        middleware: defaultSettingsMiddleware({ settings: { providerOptions: { groq: { reasoningEffort: "low" } } } }),
+      });
+    }
     case "openai":
       return createOpenAI({ apiKey })(ai.model);
   }
@@ -102,6 +116,7 @@ function embeddingModel(ai: AiConfig): EmbeddingModel | null {
     case "openai":
       return createOpenAI({ apiKey }).embeddingModel(id);
     case "anthropic":
+    case "groq":
       return null;
   }
 }

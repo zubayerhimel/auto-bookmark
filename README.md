@@ -172,7 +172,8 @@ To run the job by hand: `curl -H "Authorization: Bearer $CRON_SECRET" <app addre
 2. **Process** (in the background via `after()`): the AI writes a title, a 2–4 sentence summary,
    key points and tags, then chooses one of your existing categories or creates a new one.
    Text is embedded with pgvector and indexed for full-text search. On a bookmark's page you can
-   add a note and edit its tags; tags you edit are kept when it's summarized again.
+   add a note and edit its tags; tags you edit are kept when it's summarized again. Click any tag
+   (or pick one on the **Tags** page, `/tags`) to list every bookmark carrying it.
 3. **Search**: longer questions are first turned into a search plan (topic, content type,
    category, date range). Results combine semantic similarity and keyword matches with
    reciprocal rank fusion, and matching words are highlighted. Semantic matches must be close to

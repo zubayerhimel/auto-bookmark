@@ -190,6 +190,8 @@ export async function listBookmarks(
     /** Filter by category slug without a separate lookup first, so it can run alongside one. */
     categorySlug?: string;
     uncategorized?: boolean;
+    /** Only bookmarks carrying this tag. */
+    tag?: string;
     type?: BookmarkType;
     unread?: boolean;
     sort?: LibrarySort;
@@ -205,6 +207,8 @@ export async function listBookmarks(
     );
   }
   if (opts.uncategorized) conds.push(isNull(schema.bookmark.categoryId));
+  // `@>` rather than `= any(...)` so the GIN index on tags is used.
+  if (opts.tag) conds.push(sql`${schema.bookmark.tags} @> array[${opts.tag}]::text[]`);
   if (opts.type) conds.push(eq(schema.bookmark.type, opts.type));
   if (opts.unread) conds.push(isNull(schema.bookmark.readAt));
 
@@ -235,6 +239,7 @@ export async function listBookmarks(
 /** The list query for the library's URL filters. */
 export function libraryQuery(params: {
   category: string | null;
+  tag: string | null;
   type: BookmarkType | null;
   view: "unread" | null;
   sort: LibrarySort;
@@ -243,6 +248,7 @@ export function libraryQuery(params: {
     sort: params.sort,
     categorySlug: params.category && params.category !== "uncategorized" ? params.category : undefined,
     uncategorized: params.category === "uncategorized",
+    tag: params.tag?.trim().toLowerCase() || undefined,
     type: params.type ?? undefined,
     unread: params.view === "unread",
   };
@@ -374,6 +380,18 @@ export const libraryStats = cache(async (userId: string) => {
     .where(eq(schema.bookmark.userId, userId));
   return row;
 });
+
+/** Every tag in the user's library with how many bookmarks carry it, most used first. */
+export async function listTags(userId: string) {
+  const rows = await db.execute<{ tag: string; count: number }>(sql`
+    select t as tag, count(*)::int as count
+    from ${schema.bookmark} b, unnest(b.tags) t
+    where b.user_id = ${userId}
+    group by t
+    order by count(*) desc, t
+  `);
+  return [...rows];
+}
 
 /** Cached so the library page and its metadata share one lookup. */
 export const getCategoryBySlug = cache(async (userId: string, slug: string) => {

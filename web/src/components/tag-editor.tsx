@@ -137,7 +137,7 @@ export function TagEditor({ bookmarkId, tags, locked }: { bookmarkId: string; ta
               {tags.map((t) => (
                 <li key={t}>
                   <Badge asChild variant="secondary">
-                    <Link href={libraryHref("/library", { q: t })}>#{t}</Link>
+                    <Link href={libraryHref("/library", { tag: t })}>#{t}</Link>
                   </Badge>
                 </li>
               ))}

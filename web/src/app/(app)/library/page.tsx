@@ -3,12 +3,13 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { SearchParams } from "nuqs/server";
 import type { BookmarkType } from "@/db/schema";
-import { BookmarkPlusIcon, CheckCheckIcon, CircleAlertIcon, FileUpIcon, PuzzleIcon, RotateCwIcon } from "lucide-react";
+import { BookmarkPlusIcon, CheckCheckIcon, CircleAlertIcon, FileUpIcon, PuzzleIcon, RotateCwIcon, XIcon } from "lucide-react";
 import { AddLinkForm } from "@/components/add-link-form";
 import { BookmarkFeed } from "@/components/bookmark-feed";
 import { SortMenu } from "@/components/sort-menu";
 import { SearchPanel } from "@/components/search-panel";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { markAllReadAction, retryFailedAction } from "@/lib/actions";
@@ -26,8 +27,9 @@ const TYPES: { key: BookmarkType | "all"; label: string }[] = [
 type PageProps = { searchParams: Promise<SearchParams> };
 
 export async function generateMetadata({ searchParams }: PageProps): Promise<Metadata> {
-  const { category: slug, view } = await loadLibraryParams(searchParams);
+  const { category: slug, view, tag } = await loadLibraryParams(searchParams);
   if (slug === "uncategorized") return { title: "Uncategorized" };
+  if (!slug && tag) return { title: `#${tag}` };
   if (view === "unread") return { title: "To read" };
   if (!slug) return { title: "Library" };
   const user = await requireUser();
@@ -42,6 +44,7 @@ export default async function LibraryPage({ searchParams }: PageProps) {
   const type = typeParam ?? undefined;
   const unread = view === "unread";
   const query = libraryQuery(params);
+  const tag = query.tag ?? null;
 
   const [category, { items, nextCursor }, categories] = await Promise.all([
     query.categorySlug ? getCategoryBySlug(user.id, query.categorySlug) : null,
@@ -52,10 +55,11 @@ export default async function LibraryPage({ searchParams }: PageProps) {
   const failed = items.filter((i) => i.status === "failed").length;
 
   const heading =
-    category?.name ?? (slug === "uncategorized" ? "Uncategorized" : unread ? "To read" : "All bookmarks");
+    category?.name ??
+    (slug === "uncategorized" ? "Uncategorized" : tag ? `#${tag}` : unread ? "To read" : "All bookmarks");
   const qs = (patch: Parameters<typeof libraryHref>[1]) =>
-    libraryHref("/library", { category: slug, type: typeParam, view, sort, ...patch });
-  const filters = libraryHref({ category: slug, type: typeParam, view, sort });
+    libraryHref("/library", { category: slug, tag, type: typeParam, view, sort, ...patch });
+  const filters = libraryHref({ category: slug, tag, type: typeParam, view, sort });
 
   return (
     <div className="mx-auto max-w-4xl">
@@ -71,9 +75,26 @@ export default async function LibraryPage({ searchParams }: PageProps) {
               </h1>
               {category?.description ? (
                 <p className="mt-1.5 max-w-[60ch] text-ink-soft">{category.description}</p>
-              ) : unread && !slug ? (
+              ) : unread && !slug && !tag ? (
                 <p className="mt-1.5 max-w-[60ch] text-ink-soft">
                   Everything you&apos;ve saved but not opened yet. Opening a bookmark takes it off this list.
+                </p>
+              ) : null}
+              {tag ? (
+                <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-ink-soft">
+                  <Badge variant="secondary" className="h-6 gap-1 pr-1 text-sm">
+                    Tagged #{tag}
+                    <Link
+                      href={qs({ tag: null })}
+                      aria-label={`Stop filtering by #${tag}`}
+                      className="grid size-4 place-items-center rounded-full text-muted-foreground transition-colors duration-150 ease-out hover:bg-foreground/10 hover:text-foreground"
+                    >
+                      <XIcon className="size-3" />
+                    </Link>
+                  </Badge>
+                  <Link href="/tags" className="underline-offset-4 hover:text-ink hover:underline">
+                    All tags
+                  </Link>
                 </p>
               ) : null}
             </div>
@@ -145,7 +166,7 @@ export default async function LibraryPage({ searchParams }: PageProps) {
                 <EmptyDescription>New saves land here until you open them.</EmptyDescription>
               </EmptyHeader>
             </Empty>
-          ) : type || slug ? (
+          ) : type || slug || tag ? (
             <Empty className="mt-6">
               <EmptyHeader>
                 <EmptyTitle>Nothing here yet</EmptyTitle>
@@ -190,7 +211,7 @@ export default async function LibraryPage({ searchParams }: PageProps) {
             categories={categories.map(({ id, name, color }) => ({ id, name, color }))}
             toolbar={
               <>
-                {unread && !slug && !type ? (
+                {unread && !slug && !type && !tag ? (
                   <form action={markAllReadAction}>
                     <Button type="submit" variant="ghost" size="sm" className="text-ink-soft">
                       <CheckCheckIcon data-icon="inline-start" />

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useQueryStates } from "nuqs";
 import { Suspense } from "react";
-import { BookOpenIcon, FileUpIcon, LibraryIcon, PuzzleIcon, SearchIcon, TagsIcon } from "lucide-react";
+import { BookOpenIcon, FileUpIcon, HashIcon, LibraryIcon, PuzzleIcon, SearchIcon, TagsIcon } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { openCommandPalette, PaletteShortcut } from "@/components/command-palette";
 import { LogoMark } from "@/components/logo";
@@ -39,9 +39,14 @@ function useCloseOnNavigate() {
 
 function useActiveKey() {
   const pathname = usePathname();
-  const [{ category, view }] = useQueryStates({ category: libraryParams.category, view: libraryParams.view });
+  const [{ category, tag, view }] = useQueryStates({
+    category: libraryParams.category,
+    tag: libraryParams.tag,
+    view: libraryParams.view,
+  });
   if (pathname !== "/library") return null;
   if (category) return category;
+  if (tag) return null;
   return view === "unread" ? "unread" : "all";
 }
 
@@ -181,6 +186,14 @@ export function AppSidebar(props: Props) {
               <Link href="/categories" onClick={close}>
                 <TagsIcon />
                 <span>Manage categories</span>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton asChild isActive={pathname === "/tags"}>
+              <Link href="/tags" onClick={close}>
+                <HashIcon />
+                <span>Tags</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

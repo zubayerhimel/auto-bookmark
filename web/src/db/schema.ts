@@ -110,6 +110,7 @@ export const bookmark = pgTable(
       t.embedding.op("vector_cosine_ops"),
     ),
     index("bookmark_search_idx").using("gin", t.searchVector),
+    index("bookmark_tags_idx").using("gin", t.tags),
     index("bookmark_link_checked_idx").on(t.linkCheckedAt),
   ],
 ).enableRLS();

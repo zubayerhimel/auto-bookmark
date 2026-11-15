@@ -43,6 +43,13 @@
       "when": 1794722763518,
       "tag": "0005_user_tags",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794723326217,
+      "tag": "0006_tags_index",
+      "breakpoints": true
     }
   ]
 }

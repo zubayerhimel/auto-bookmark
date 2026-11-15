@@ -1,6 +1,8 @@
+import Link from "next/link";
 import { CheckIcon, Link2OffIcon } from "lucide-react";
 import type { BookmarkListItem } from "@/lib/bookmarks";
 import { hostOf, timeAgo, TYPE_LABEL } from "@/lib/format";
+import { libraryHref } from "@/lib/search-params";
 import { Highlight } from "./highlight";
 import { IntentLink } from "./intent-link";
 import { RowRibbon } from "./row-ribbon";
@@ -108,9 +110,13 @@ export function BookmarkRow({
               </span>
             ) : null}
             {item.tags.slice(0, 3).map((tag) => (
-              <span key={tag}>
+              <Link
+                key={tag}
+                href={libraryHref("/library", { tag })}
+                className="relative rounded-sm transition-colors duration-150 ease-out hover:text-action focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+              >
                 #<Highlight text={tag} terms={terms} />
-              </span>
+              </Link>
             ))}
           </p>
         </div>

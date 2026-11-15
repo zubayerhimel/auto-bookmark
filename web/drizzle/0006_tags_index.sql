@@ -1,0 +1,1 @@
+CREATE INDEX "bookmark_tags_idx" ON "bookmark" USING gin ("tags");

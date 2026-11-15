@@ -13,6 +13,7 @@ export type LibrarySort = (typeof LIBRARY_SORTS)[number];
 /** The library's filters as they appear in the address bar. Shared by the server page and client controls. */
 export const libraryParams = {
   category: parseAsString,
+  tag: parseAsString,
   type: parseAsStringLiteral(BOOKMARK_KINDS),
   view: parseAsStringLiteral(["unread"] as const),
   sort: parseAsStringLiteral(LIBRARY_SORTS).withDefault("newest"),

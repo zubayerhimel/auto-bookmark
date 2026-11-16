@@ -130,7 +130,8 @@ function MenuItems({ parts: P }: { parts: Parts }) {
   const { item, categories, pending, run, confirmDelete } = use(MenuContext)!;
   // A phone is too narrow for a side flyout, so "Move to" swaps the menu for the category list instead.
   const mobile = useIsMobile();
-  const [moving, setMoving] = useState(false);
+  // "back" is the action list again after leaving the categories; it slides in from the other side.
+  const [view, setView] = useState<"actions" | "move" | "back">("actions");
 
   const categoryItems = categories.map((c) => {
     const current = c.id === item.categoryId;
@@ -147,14 +148,22 @@ function MenuItems({ parts: P }: { parts: Parts }) {
     );
   });
 
-  if (mobile && moving) {
+  // Only the incoming list moves, a short push towards where the user is going.
+  const slide = (from: "right" | "left") =>
+    cn(
+      "animate-in duration-200 ease-out fade-in-0",
+      from === "right" ? "slide-in-from-right-6" : "slide-in-from-left-6",
+      "motion-reduce:slide-in-from-left-0 motion-reduce:slide-in-from-right-0",
+    );
+
+  if (mobile && view === "move") {
     return (
-      <>
+      <div key="move" className={slide("right")}>
         <P.Group>
           <P.Item
             onSelect={(e) => {
               e.preventDefault();
-              setMoving(false);
+              setView("back");
             }}
           >
             <ChevronLeftIcon />
@@ -164,12 +173,12 @@ function MenuItems({ parts: P }: { parts: Parts }) {
         </P.Group>
         <P.Separator />
         <P.Group>{categoryItems}</P.Group>
-      </>
+      </div>
     );
   }
 
   return (
-    <>
+    <div key="actions" className={view === "back" ? slide("left") : undefined}>
       <P.Group>
         <P.Item asChild>
           <a href={item.url} target="_blank" rel="noopener noreferrer">
@@ -218,7 +227,7 @@ function MenuItems({ parts: P }: { parts: Parts }) {
             disabled={pending || !categories.length}
             onSelect={(e) => {
               e.preventDefault();
-              setMoving(true);
+              setView("move");
             }}
           >
             <FolderInputIcon />
@@ -242,7 +251,7 @@ function MenuItems({ parts: P }: { parts: Parts }) {
           Delete
         </P.Item>
       </P.Group>
-    </>
+    </div>
   );
 }
 

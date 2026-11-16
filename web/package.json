@@ -57,5 +57,5 @@
     "tsx": "^4.23.15",
     "typescript": "^5"
   },
-  "packageManager": "pnpm@11.5.1"
+  "packageManager": "pnpm@12.21.0"
 }

@@ -48,10 +48,15 @@ export function BookmarkFeed({
   // Cards can vanish under a selection (deleted elsewhere, or a refresh), so count only those still here.
   const selectedIds = all.filter((i) => selected.has(i.id)).map((i) => i.id);
 
-  function stopSelecting() {
-    setSelecting(false);
+  function startSelecting() {
     setSelected(new Set());
     lastToggled.current = null;
+    setSelecting(true);
+  }
+
+  // The selection is cleared on the next start, so the bar keeps its count while it slides away.
+  function stopSelecting() {
+    setSelecting(false);
   }
 
   function toggle(index: number, range: boolean) {
@@ -137,7 +142,7 @@ export function BookmarkFeed({
     <>
       <div className="mt-3 flex items-center justify-end gap-2">
         {selecting ? null : (
-          <Button type="button" variant="ghost" size="sm" className="text-ink-soft" onClick={() => setSelecting(true)}>
+          <Button type="button" variant="ghost" size="sm" className="text-ink-soft" onClick={startSelecting}>
             <CheckSquareIcon data-icon="inline-start" />
             Select
           </Button>
@@ -155,17 +160,16 @@ export function BookmarkFeed({
           />
         ))}
       </ol>
-      {selecting ? (
-        <SelectionBar
-          anchor={list}
-          ids={selectedIds}
-          total={all.length}
-          categories={categories}
-          onSelectAll={() => setSelected(new Set(all.map((i) => i.id)))}
-          onDone={stopSelecting}
-          onApplied={applyLocally}
-        />
-      ) : null}
+      <SelectionBar
+        open={selecting}
+        anchor={list}
+        ids={selectedIds}
+        total={all.length}
+        categories={categories}
+        onSelectAll={() => setSelected(new Set(all.map((i) => i.id)))}
+        onDone={stopSelecting}
+        onApplied={applyLocally}
+      />
       <div ref={sentinel} aria-live="polite" className="mt-6 flex min-h-10 items-center justify-center text-sm text-ink-faint">
         {status === "error" ? (
           <p className="flex items-center gap-3">

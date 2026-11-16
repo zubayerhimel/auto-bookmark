@@ -31,8 +31,12 @@ export type CategoryOption = { id: string; name: string; color: string };
 
 const plural = (n: number) => (n === 1 ? "1 bookmark" : `${n.toLocaleString()} bookmarks`);
 
-/** Pinned to the bottom of the screen while selecting; runs one change on all selected bookmarks. */
+/**
+ * Pinned to the bottom of the screen while selecting; runs one change on all selected bookmarks.
+ * Stays mounted so it can slide back down when selecting ends.
+ */
 export function SelectionBar({
+  open,
   anchor,
   ids,
   total,
@@ -41,6 +45,7 @@ export function SelectionBar({
   onDone,
   onApplied,
 }: {
+  open: boolean;
   /** The list the bar lines up with. */
   anchor: RefObject<HTMLElement | null>;
   ids: string[];
@@ -107,7 +112,14 @@ export function SelectionBar({
       ref={bar}
       role="toolbar"
       aria-label="Selected bookmarks"
-      className="@container/bar fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 animate-in fade-in slide-in-from-bottom-4 duration-200 ease-out motion-reduce:animate-none sm:bottom-5"
+      inert={!open}
+      className={cn(
+        // Only translate and opacity move; visibility follows so the bar leaves the tab order once it's gone.
+        "@container/bar fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 transition-[translate,opacity,visibility] ease-out motion-reduce:transition-[opacity,visibility] sm:bottom-5",
+        open
+          ? "duration-250"
+          : "invisible translate-y-[calc(100%+1.5rem)] opacity-0 duration-150 motion-reduce:translate-y-0",
+      )}
     >
       <div className="flex items-center gap-1 rounded-2xl bg-popover p-1.5 text-popover-foreground shadow-lg ring-1 ring-foreground/10">
         <Button type="button" variant="ghost" size="icon" aria-label="Stop selecting" onClick={onDone} disabled={pending}>

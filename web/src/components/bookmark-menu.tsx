@@ -4,6 +4,8 @@ import {
   BookOpenCheckIcon,
   BookOpenIcon,
   CheckIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   CopyIcon,
   EllipsisIcon,
   ExternalLinkIcon,
@@ -12,7 +14,17 @@ import {
   StarOffIcon,
   Trash2Icon,
 } from "lucide-react";
-import { createContext, use, useState, useTransition, type ComponentType, type ReactNode } from "react";
+import {
+  createContext,
+  use,
+  useRef,
+  useState,
+  useTransition,
+  type ComponentType,
+  type PointerEvent,
+  type ReactNode,
+  type SyntheticEvent,
+} from "react";
 import { toast } from "sonner";
 import { cn } from "cn";
 import {
@@ -48,6 +60,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { bulkBookmarksAction, type BulkOperation } from "@/lib/actions";
 import type { CategoryOption } from "./selection-bar";
 
@@ -72,6 +85,9 @@ type MenuState = {
   pending: boolean;
   run: (op: BulkOperation, done: string) => void;
   confirmDelete: () => void;
+  /** The "⋯" menu's open state, so a long-press on a phone can open it too. */
+  menuOpen: boolean;
+  setMenuOpen: (open: boolean) => void;
 };
 
 const MenuContext = createContext<MenuState | null>(null);
@@ -112,6 +128,46 @@ const dropdownParts: Parts = {
 
 function MenuItems({ parts: P }: { parts: Parts }) {
   const { item, categories, pending, run, confirmDelete } = use(MenuContext)!;
+  // A phone is too narrow for a side flyout, so "Move to" swaps the menu for the category list instead.
+  const mobile = useIsMobile();
+  const [moving, setMoving] = useState(false);
+
+  const categoryItems = categories.map((c) => {
+    const current = c.id === item.categoryId;
+    return (
+      <P.Item
+        key={c.id}
+        disabled={pending || current}
+        onSelect={() => run({ kind: "move", categoryId: c.id }, `Moved to ${c.name}.`)}
+      >
+        <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ background: c.color }} />
+        <span className="flex-1 truncate">{c.name}</span>
+        {current ? <CheckIcon aria-label="Current category" /> : null}
+      </P.Item>
+    );
+  });
+
+  if (mobile && moving) {
+    return (
+      <>
+        <P.Group>
+          <P.Item
+            onSelect={(e) => {
+              e.preventDefault();
+              setMoving(false);
+            }}
+          >
+            <ChevronLeftIcon />
+            <span className="sr-only">Back to actions:</span>
+            Move to
+          </P.Item>
+        </P.Group>
+        <P.Separator />
+        <P.Group>{categoryItems}</P.Group>
+      </>
+    );
+  }
+
   return (
     <>
       <P.Group>
@@ -157,28 +213,27 @@ function MenuItems({ parts: P }: { parts: Parts }) {
           {item.read ? <BookOpenIcon /> : <BookOpenCheckIcon />}
           {item.read ? "Mark as unread" : "Mark as read"}
         </P.Item>
-        <P.Sub>
-          <P.SubTrigger disabled={pending || !categories.length}>
+        {mobile ? (
+          <P.Item
+            disabled={pending || !categories.length}
+            onSelect={(e) => {
+              e.preventDefault();
+              setMoving(true);
+            }}
+          >
             <FolderInputIcon />
             Move to
-          </P.SubTrigger>
-          <P.SubContent className="max-h-72 w-52 overflow-y-auto">
-            {categories.map((c) => {
-              const current = c.id === item.categoryId;
-              return (
-                <P.Item
-                  key={c.id}
-                  disabled={pending || current}
-                  onSelect={() => run({ kind: "move", categoryId: c.id }, `Moved to ${c.name}.`)}
-                >
-                  <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ background: c.color }} />
-                  <span className="flex-1 truncate">{c.name}</span>
-                  {current ? <CheckIcon aria-label="Current category" /> : null}
-                </P.Item>
-              );
-            })}
-          </P.SubContent>
-        </P.Sub>
+            <ChevronRightIcon className="ml-auto" />
+          </P.Item>
+        ) : (
+          <P.Sub>
+            <P.SubTrigger disabled={pending || !categories.length}>
+              <FolderInputIcon />
+              Move to
+            </P.SubTrigger>
+            <P.SubContent className="max-h-72 w-52 overflow-y-auto">{categoryItems}</P.SubContent>
+          </P.Sub>
+        )}
       </P.Group>
       <P.Separator />
       <P.Group>
@@ -194,6 +249,7 @@ function MenuItems({ parts: P }: { parts: Parts }) {
 /**
  * Wraps a library card so right-clicking (or long-pressing) it opens its actions.
  * `BookmarkMenuButton`, placed inside the card, opens the same menu.
+ * On a phone a menu at the finger can run off either edge, so a long-press opens the "⋯" menu instead.
  */
 export function BookmarkMenu({
   item,
@@ -204,6 +260,48 @@ export function BookmarkMenu({
 }: BookmarkMenuProps & { item: MenuBookmark; disabled?: boolean; children: ReactNode }) {
   const [pending, start] = useTransition();
   const [confirming, setConfirming] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const mobile = useIsMobile();
+  const press = useRef<{ timer: number; x: number; y: number } | null>(null);
+  // The finger lifting after a long-press would otherwise click through to the card's link.
+  const swallowClick = useRef(false);
+
+  const cancelPress = () => {
+    if (press.current) window.clearTimeout(press.current.timer);
+    press.current = null;
+  };
+  const openFromPress = () => {
+    cancelPress();
+    swallowClick.current = true;
+    setMenuOpen(true);
+  };
+  const longPress =
+    mobile && !disabled
+      ? {
+          onContextMenu: (e: SyntheticEvent) => {
+            e.preventDefault();
+            openFromPress();
+          },
+          onPointerDown: (e: PointerEvent) => {
+            swallowClick.current = false;
+            if (e.pointerType === "mouse") return;
+            cancelPress();
+            press.current = { timer: window.setTimeout(openFromPress, 500), x: e.clientX, y: e.clientY };
+          },
+          onPointerMove: (e: PointerEvent) => {
+            const p = press.current;
+            if (p && Math.hypot(e.clientX - p.x, e.clientY - p.y) > 10) cancelPress();
+          },
+          onPointerUp: cancelPress,
+          onPointerCancel: cancelPress,
+          onClickCapture: (e: SyntheticEvent) => {
+            if (!swallowClick.current) return;
+            swallowClick.current = false;
+            e.preventDefault();
+            e.stopPropagation();
+          },
+        }
+      : {};
 
   const run = (op: BulkOperation, done: string) =>
     start(async () => {
@@ -217,10 +315,12 @@ export function BookmarkMenu({
     });
 
   return (
-    <MenuContext value={{ item, categories, pending, run, confirmDelete: () => setConfirming(true) }}>
+    <MenuContext
+      value={{ item, categories, pending, run, confirmDelete: () => setConfirming(true), menuOpen, setMenuOpen }}
+    >
       <ContextMenu modal={false}>
         {/* No iOS link preview on long-press: the long-press opens this menu instead. */}
-        <ContextMenuTrigger asChild disabled={disabled} className="[-webkit-touch-callout:none]">
+        <ContextMenuTrigger asChild disabled={disabled || mobile} className="[-webkit-touch-callout:none]" {...longPress}>
           {children}
         </ContextMenuTrigger>
         <ContextMenuContent className="w-56">
@@ -252,7 +352,7 @@ export function BookmarkMenuButton({ className }: { className?: string }) {
   const state = use(MenuContext);
   if (!state) return null;
   return (
-    <DropdownMenu modal={false}>
+    <DropdownMenu modal={false} open={state.menuOpen} onOpenChange={state.setMenuOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           type="button"

@@ -39,6 +39,7 @@ export function BookmarkFeed({
   const lastToggled = useRef<number | null>(null);
   const busy = useRef(false);
   const sentinel = useRef<HTMLDivElement>(null);
+  const list = useRef<HTMLOListElement>(null);
 
   // The first page refreshes while bookmarks are processing; until more is loaded, follow its cursor.
   const cursor = more.items.length ? more.cursor : nextCursor;
@@ -143,7 +144,7 @@ export function BookmarkFeed({
         )}
         {toolbar}
       </div>
-      <ol className={`mt-3 ${bookmarkListClass}`}>
+      <ol ref={list} className={`mt-3 ${bookmarkListClass}`}>
         {all.map((item, index) => (
           <BookmarkRow
             key={item.id}
@@ -156,6 +157,7 @@ export function BookmarkFeed({
       </ol>
       {selecting ? (
         <SelectionBar
+          anchor={list}
           ids={selectedIds}
           total={all.length}
           categories={categories}
@@ -185,6 +187,8 @@ export function BookmarkFeed({
           <p>That&apos;s everything.</p>
         ) : null}
       </div>
+      {/* Room to scroll the last card clear of the selection bar. */}
+      {selecting ? <div aria-hidden className="h-[calc(3.5rem+env(safe-area-inset-bottom))]" /> : null}
     </>
   );
 }

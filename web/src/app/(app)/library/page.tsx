@@ -120,7 +120,7 @@ export default async function LibraryPage({ searchParams }: PageProps) {
           </div>
         </header>
 
-        <nav aria-label="Filter by kind" className="-mx-4 mt-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
+        <nav aria-label="Filter by kind" className="relative -mx-4 mt-4 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
           <ul className="flex min-w-full w-max gap-6 shadow-[inset_0_-1px_0_var(--rule)]">
             {TYPES.map((t) => {
               const current = (type ?? "all") === t.key;

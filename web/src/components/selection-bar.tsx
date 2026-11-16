@@ -1,7 +1,7 @@
 "use client";
 
 import { BookOpenCheckIcon, BookOpenIcon, FolderInputIcon, StarIcon, Trash2Icon, XIcon } from "lucide-react";
-import { useState, useTransition } from "react";
+import { useLayoutEffect, useRef, useState, useTransition, type RefObject } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -17,19 +17,23 @@ import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { bulkBookmarksAction, type BulkOperation } from "@/lib/actions";
+import { cn } from "@/lib/utils";
 
 export type CategoryOption = { id: string; name: string; color: string };
 
 const plural = (n: number) => (n === 1 ? "1 bookmark" : `${n.toLocaleString()} bookmarks`);
 
-/** Floats at the bottom of the list while bookmarks are selected; runs one change on all of them. */
+/** Pinned to the bottom of the screen while selecting; runs one change on all selected bookmarks. */
 export function SelectionBar({
+  anchor,
   ids,
   total,
   categories,
@@ -37,6 +41,8 @@ export function SelectionBar({
   onDone,
   onApplied,
 }: {
+  /** The list the bar lines up with. */
+  anchor: RefObject<HTMLElement | null>;
   ids: string[];
   /** How many cards are loaded, for "Select all". */
   total: number;
@@ -69,85 +75,139 @@ export function SelectionBar({
   const icon = (kind: BulkOperation["kind"], Icon: typeof BookOpenIcon) =>
     pending && running === kind ? <Spinner data-icon="inline-start" /> : <Icon data-icon="inline-start" />;
 
+  // Fixed to the viewport so it's always at the bottom, but lined up with the list rather than the window.
+  const bar = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = bar.current;
+    const list = anchor.current;
+    if (!el || !list) return;
+    const place = () => {
+      const r = list.getBoundingClientRect();
+      el.style.left = `${r.left}px`;
+      el.style.width = `${r.width}px`;
+    };
+    place();
+    const observer = new ResizeObserver(place);
+    observer.observe(list);
+    // The list keeps its width but shifts when the sidebar opens or closes.
+    const inset = list.closest("[data-slot=sidebar-inset]");
+    if (inset) observer.observe(inset);
+    window.addEventListener("resize", place);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", place);
+    };
+  }, [anchor]);
+
+  const action = "@max-2xl/bar:size-9 @max-2xl/bar:px-0";
+  const label = "hidden @2xl/bar:inline";
+
   return (
     <div
+      ref={bar}
       role="toolbar"
       aria-label="Selected bookmarks"
-      className="sticky bottom-4 z-20 mt-4 flex flex-wrap items-center gap-1 rounded-2xl border border-rule bg-card/95 p-1.5 shadow-lg backdrop-blur animate-in fade-in slide-in-from-bottom-2 duration-200 motion-reduce:animate-none"
+      className="@container/bar fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-30 animate-in fade-in slide-in-from-bottom-4 duration-200 ease-out motion-reduce:animate-none sm:bottom-5"
     >
-      <p className="px-2.5 text-sm font-medium tabular-nums" aria-live="polite">
-        {count ? `${count.toLocaleString()} selected` : "Select bookmarks"}
-      </p>
-      {count < total ? (
-        <Button type="button" variant="ghost" size="sm" onClick={onSelectAll} className="text-ink-soft">
-          Select all {total.toLocaleString()}
-        </Button>
-      ) : null}
-      <div className="ml-auto flex flex-wrap items-center gap-1">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={!count || pending}
-          onClick={() => run({ kind: "read" }, (n) => `Marked ${plural(n)} as read.`)}
-        >
-          {icon("read", BookOpenIcon)}
-          Mark read
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={!count || pending}
-          onClick={() => run({ kind: "unread" }, (n) => `Put ${plural(n)} on your To read list.`)}
-        >
-          {icon("unread", BookOpenCheckIcon)}
-          Mark unread
-        </Button>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={!count || pending}
-          onClick={() => run({ kind: "favorite" }, (n) => `Added ${plural(n)} to favorites.`)}
-        >
-          {icon("favorite", StarIcon)}
-          Favorite
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button type="button" variant="ghost" size="sm" disabled={!count || pending || !categories.length}>
-              {icon("move", FolderInputIcon)}
-              Move to…
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" side="top" className="max-h-72 w-56 overflow-y-auto">
-            <DropdownMenuLabel>Move to category</DropdownMenuLabel>
-            {categories.map((c) => (
-              <DropdownMenuItem
-                key={c.id}
-                onSelect={() => run({ kind: "move", categoryId: c.id }, (n) => `Moved ${plural(n)} to ${c.name}.`)}
-              >
-                <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ background: c.color }} />
-                <span className="truncate">{c.name}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={!count || pending}
-          onClick={() => setConfirming(true)}
-          className="text-destructive hover:text-destructive"
-        >
-          {icon("delete", Trash2Icon)}
-          Delete
-        </Button>
-        <Button type="button" variant="ghost" size="icon-sm" aria-label="Stop selecting" onClick={onDone} disabled={pending}>
+      <div className="flex items-center gap-1 rounded-2xl bg-popover p-1.5 text-popover-foreground shadow-lg ring-1 ring-foreground/10">
+        <Button type="button" variant="ghost" size="icon" aria-label="Stop selecting" onClick={onDone} disabled={pending}>
           <XIcon />
         </Button>
+        <div className="flex min-w-0 flex-col items-start pr-2" aria-live="polite">
+          <p className="truncate text-sm leading-5 font-medium tabular-nums">
+            {count ? `${count.toLocaleString()} selected` : "None selected"}
+          </p>
+          {count < total ? (
+            <Button
+              type="button"
+              variant="link"
+              onClick={onSelectAll}
+              className="h-auto p-0 text-xs leading-4 font-normal text-muted-foreground hover:text-foreground"
+            >
+              Select all {total.toLocaleString()}
+            </Button>
+          ) : null}
+        </div>
+        <div className="ml-auto flex shrink-0 items-center gap-0.5">
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label="Mark read"
+            className={action}
+            disabled={!count || pending}
+            onClick={() => run({ kind: "read" }, (n) => `Marked ${plural(n)} as read.`)}
+          >
+            {icon("read", BookOpenCheckIcon)}
+            <span className={label}>Mark read</span>
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label="Mark unread"
+            className={action}
+            disabled={!count || pending}
+            onClick={() => run({ kind: "unread" }, (n) => `Put ${plural(n)} on your To read list.`)}
+          >
+            {icon("unread", BookOpenIcon)}
+            <span className={label}>Mark unread</span>
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label="Favorite"
+            className={action}
+            disabled={!count || pending}
+            onClick={() => run({ kind: "favorite" }, (n) => `Added ${plural(n)} to favorites.`)}
+          >
+            {icon("favorite", StarIcon)}
+            <span className={label}>Favorite</span>
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                aria-label="Move to category"
+                className={action}
+                disabled={!count || pending || !categories.length}
+              >
+                {icon("move", FolderInputIcon)}
+                <span className={label}>Move to…</span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" side="top" sideOffset={10} className="max-h-72 w-56 overflow-y-auto">
+              <DropdownMenuLabel>Move to category</DropdownMenuLabel>
+              <DropdownMenuGroup>
+                {categories.map((c) => (
+                  <DropdownMenuItem
+                    key={c.id}
+                    onSelect={() => run({ kind: "move", categoryId: c.id }, (n) => `Moved ${plural(n)} to ${c.name}.`)}
+                  >
+                    <span aria-hidden className="size-2.5 shrink-0 rounded-full" style={{ background: c.color }} />
+                    <span className="truncate">{c.name}</span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuGroup>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Separator orientation="vertical" className="mx-1 data-vertical:h-5 data-vertical:self-center" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            aria-label="Delete"
+            disabled={!count || pending}
+            onClick={() => setConfirming(true)}
+            className={cn(action, "text-destructive hover:bg-destructive/10 hover:text-destructive")}
+          >
+            {icon("delete", Trash2Icon)}
+            <span className={label}>Delete</span>
+          </Button>
+        </div>
       </div>
 
       <AlertDialog open={confirming} onOpenChange={setConfirming}>
